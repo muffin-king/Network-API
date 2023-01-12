@@ -26,12 +26,11 @@ public class Client {
         Timer packetSender = new Timer();
         packetSender.schedule(new PacketSender(), 0, 1);
 
-        MessageReader messageReader = new MessageReader();
-        new Thread(messageReader).start();
+        Timer messageReader = new Timer();
+        messageReader.schedule(new MessageReader(), 0, 1);
 
-        ServerConnector connector = new ServerConnector();
-        Thread connectorThread = new Thread(connector);
-        connectorThread.start();
+        Timer connector = new Timer();
+        connector.schedule(new ServerConnector(), 0, 1);
     }
 
     private void connectServer() {
@@ -61,10 +60,8 @@ public class Client {
     private class ServerConnector extends TimerTask {
         @Override
         public void run() {
-            while(true) {
-                if(!socket.isConnected())
-                    connectServer();
-            }
+            if(!socket.isConnected())
+                connectServer();
         }
     }
 
