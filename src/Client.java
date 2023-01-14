@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -9,31 +10,28 @@ import java.util.TimerTask;
 
 public class Client {
     private Socket socket;
-    private final InetSocketAddress address;
     private final HashMap<Integer, Object> packet;
+    private InetSocketAddress address;
 
     public Client() {
         socket = new Socket();
         System.out.println(socket.getLocalAddress());
 
-        address = new InetSocketAddress("localhost", 8081);
+        String hostname = JOptionPane.showInputDialog("Enter the server hostname");
+        address = new InetSocketAddress(hostname, 8081);
+
+        connectServer(address);
 
         packet = new HashMap<>();
-
-        connectServer();
-
 
         Timer packetSender = new Timer();
         packetSender.schedule(new PacketSender(), 0, 1);
 
         Timer messageReader = new Timer();
         messageReader.schedule(new MessageReader(), 0, 1);
-
-        Timer connector = new Timer();
-        connector.schedule(new ServerConnector(), 0, 1);
     }
 
-    private void connectServer() {
+    private void connectServer(InetSocketAddress address) {
         try {
             socket.connect(address);
         } catch (IOException e) {
@@ -57,26 +55,21 @@ public class Client {
         packet.put(id, object);
     }
 
-    private class ServerConnector extends TimerTask {
-        @Override
-        public void run() {
-            if(!socket.isConnected())
-                connectServer();
-        }
-    }
-
     private class PacketSender extends TimerTask {
         @Override
         public void run() {
-            try {
-                writeStream(packet);
-                packet.put(1, null);
-            } catch (IOException exception) {
-                if(exception instanceof SocketException) {
-                    System.out.println("Disconnected from server");
-                    socket = new Socket();
+            if(socket.isConnected()) {
+                try {
+                    writeStream(packet);
+                    packet.put(1, null);
+                } catch (IOException exception) {
+                    if (exception instanceof SocketException) {
+                        System.out.println("Disconnected from server");
+                        socket = new Socket();
+                    } else {
+                        throw new RuntimeException(exception);
+                    }
                 }
-                throw new RuntimeException(exception);
             }
         }
     }
