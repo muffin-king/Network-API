@@ -1,18 +1,25 @@
+import packets.Packet;
+import packets.PacketEvent;
+import packets.PacketListener;
+
 import javax.swing.*;
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class Client {
     private Socket socket;
-    private final HashMap<Integer, Object> packet;
-    private InetSocketAddress address;
+    private final InetSocketAddress address;
+    private final ArrayList<PacketListener> packetListeners;
 
+    /**
+     * Constructs a new Client, capable of sending and receiving packets to a connected server.
+     */
     public Client() {
         socket = new Socket();
         System.out.println(socket.getLocalAddress());
@@ -20,78 +27,80 @@ public class Client {
         String hostname = JOptionPane.showInputDialog("Enter the server hostname");
         address = new InetSocketAddress(hostname, 8081);
 
+        packetListeners = new ArrayList<>();
+
         connectServer(address);
 
-        packet = new HashMap<>();
+        Timer clientThread = new Timer();
+        clientThread.schedule(new ListenerThread(), 0, 1);
 
-        Timer packetSender = new Timer();
-        packetSender.schedule(new PacketSender(), 0, 1);
-
-        Timer messageReader = new Timer();
-        messageReader.schedule(new MessageReader(), 0, 1);
+        System.out.println(socket.getLocalPort());
     }
 
-    private void connectServer(InetSocketAddress address) {
+    /**
+     * Registers a packet listener.
+     * @param listener the packet listener to register to the server
+     */
+    public void registerPacketListener(PacketListener listener) {
+        packetListeners.add(listener);
+    }
+
+    private void fireListeners(Packet packet) {
+        for(PacketListener listener : packetListeners) {
+            listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
+        }
+    }
+
+    /**
+     * Connects to a server at the specified address.
+     * @param address the address to attempt to connect to
+     */
+    public void connectServer(InetSocketAddress address) {
         try {
             socket.connect(address);
         } catch (IOException e) {
-            return;
+            throw new RuntimeException(e);
         }
         System.out.println("Connected to server " + address.getHostName());
     }
 
-    public void writeStream(Object out) throws IOException {
-        ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-        outputStream.writeObject(out);
-        outputStream.flush();
+    /**
+     * Disconnects from the current server by instantiating a new Socket in place of the current socket.
+     */
+    public void disconnect() {
+        socket = new Socket();
     }
 
-    public Object readStream() throws IOException, ClassNotFoundException {
-        ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-        return inputStream.readObject();
+    /**
+     * Writes an object to a socket's stream.
+     * @param out the object to be written to the stream
+     */
+    public void writeStream(Object out) {
+        try {
+            ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
+            outputStream.writeObject(out);
+            outputStream.flush();
+        } catch(IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public void packObject(int id, Object object) {
-        packet.put(id, object);
+    /**
+     * Writes an object to a socket's stream.
+     */
+    public Object readStream() {
+        try {
+            ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
+            return inputStream.readObject();
+        } catch(IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private class PacketSender extends TimerTask {
+    private class ListenerThread extends TimerTask {
         @Override
         public void run() {
-            if(socket.isConnected()) {
-                try {
-                    writeStream(packet);
-                    packet.put(1, null);
-                } catch (IOException exception) {
-                    if (exception instanceof SocketException) {
-                        System.out.println("Disconnected from server");
-                        socket = new Socket();
-                    } else {
-                        throw new RuntimeException(exception);
-                    }
-                }
-            }
+            fireListeners((Packet) readStream());
         }
-    }
-
-    private class MessageReader extends TimerTask {
-        Scanner input;
-        String message;
-        public MessageReader() {
-            input = new Scanner(System.in);
-            message = "";
-        }
-        @Override
-        public void run() {
-            System.out.print("Enter a message: ");
-            message = input.nextLine();
-            packObject(InfoType.MESSAGE, message);
-            System.out.println();
-        }
-    }
-
-    public static void main(String[] args) throws IOException {
-        Client client = new Client();
-        System.out.println();
     }
 }
