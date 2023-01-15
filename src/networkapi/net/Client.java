@@ -16,22 +16,44 @@ import java.util.TimerTask;
 
 public class Client {
     private Socket socket;
-    private final InetSocketAddress address;
     private final ArrayList<PacketListener> packetListeners;
 
     /**
      * Constructs a new Client, capable of sending and receiving packets to a connected server.
      */
+    public Client(InetSocketAddress address) {
+        socket = new Socket();
+        System.out.println(socket.getLocalAddress());
+
+        connectServer(address);
+
+        packetListeners = new ArrayList<>();
+
+        Timer clientThread = new Timer();
+        clientThread.schedule(new ListenerThread(), 0, 1);
+
+        System.out.println(socket.getLocalPort());
+    }
+
+    public Client(String hostname, int port) {
+        socket = new Socket();
+        System.out.println(socket.getLocalAddress());
+
+        connectServer(new InetSocketAddress(hostname, port));
+
+        packetListeners = new ArrayList<>();
+
+        Timer clientThread = new Timer();
+        clientThread.schedule(new ListenerThread(), 0, 1);
+
+        System.out.println(socket.getLocalPort());
+    }
+
     public Client() {
         socket = new Socket();
         System.out.println(socket.getLocalAddress());
 
-        String hostname = JOptionPane.showInputDialog("Enter the server hostname");
-        address = new InetSocketAddress(hostname, 8081);
-
         packetListeners = new ArrayList<>();
-
-        connectServer(address);
 
         Timer clientThread = new Timer();
         clientThread.schedule(new ListenerThread(), 0, 1);
