@@ -1,6 +1,8 @@
-import packets.Packet;
-import packets.PacketEvent;
-import packets.PacketListener;
+package networkapi.net;
+
+import networkapi.packet.Packet;
+import networkapi.packet.PacketEvent;
+import networkapi.packet.PacketListener;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;

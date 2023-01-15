@@ -1,4 +1,4 @@
-package packets;
+package networkapi.packet;
 
 public class PacketEvent {
     protected final Packet packet;

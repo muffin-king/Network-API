@@ -1,4 +1,4 @@
-package packets;
+package networkapi.packet;
 
 /**
  * An interface with which to create packet listeners that fire a method when a packet is received.

@@ -1,4 +1,4 @@
-package packets;
+package networkapi.packet;
 
 import java.io.Serializable;
 
@@ -8,7 +8,7 @@ public class Packet implements Serializable {
     protected long time;
 
     /**
-     * Constructs a new packets.Packet.
+     * Constructs a new Packet.
      * @param  ID The integer ID of the packet
      * @param data The object contained by the packet
      */
