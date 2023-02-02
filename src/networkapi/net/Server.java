@@ -38,6 +38,10 @@ public class Server {
         connectThread.schedule(new ConnectionThread(), 0, 1);
     }
 
+    /**
+     * Returns an array of all connected sockets.
+     * @return an array of connected sockets
+     */
     public Socket[] getSockets() {
         Socket[] socketsArray = new Socket[sockets.size()];
         for(int i = 0; i < socketsArray.length; i++)
@@ -117,6 +121,14 @@ public class Server {
         }
     }
 
+    public Object readStream(ObjectInputStream inputStream) {
+        try {
+            return inputStream.readObject();
+        } catch(IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private class ConnectionThread extends TimerTask {
         @Override
         public void run() {
@@ -134,11 +146,20 @@ public class Server {
     private class ClientThread extends TimerTask {
         private final Socket socket;
         private final boolean isDown;
+        private final ObjectOutputStream outputStream;
+        private final ObjectInputStream inputStream;
         public ClientThread(Socket socket) {
             this.socket = socket;
             isDown = false;
             System.out.println("Socket "+socket+" connected");
             sockets.add(socket);
+
+            try {
+                outputStream = new ObjectOutputStream(socket.getOutputStream());
+                inputStream = new ObjectInputStream(socket.getInputStream());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         @Override
         public void run() {

@@ -17,6 +17,8 @@ import java.util.TimerTask;
 public class Client {
     private Socket socket;
     private final ArrayList<PacketListener> packetListeners;
+    private ObjectOutputStream outputStream;
+    private ObjectInputStream inputStream;
 
     /**
      * Constructs a new Client, capable of sending and receiving packets to a connected server.
@@ -95,6 +97,8 @@ public class Client {
     public void connectServer(InetSocketAddress address) {
         try {
             socket.connect(address);
+            outputStream = new ObjectOutputStream(socket.getOutputStream());
+            inputStream = new ObjectInputStream(socket.getInputStream());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -114,7 +118,6 @@ public class Client {
      */
     public void writeStream(Object out) {
         try {
-            ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
             outputStream.writeObject(out);
             outputStream.flush();
         } catch(IOException e) {
@@ -127,7 +130,6 @@ public class Client {
      */
     public Object readStream() {
         try {
-            ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
             return inputStream.readObject();
         } catch(IOException | ClassNotFoundException e) {
             throw new RuntimeException(e);

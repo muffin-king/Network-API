@@ -3,7 +3,7 @@ package networkapi.packet;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 
-public class Packet implements Serializable {
+public class Packet implements Serializable, Cloneable {
     protected final int ID;
     protected Object data;
     protected long time;
