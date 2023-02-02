@@ -5,7 +5,6 @@ import networkapi.packet.PacketEvent;
 import networkapi.packet.PacketListener;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
@@ -19,24 +18,6 @@ public class Client {
     private final ArrayList<PacketListener> packetListeners;
     private ObjectOutputStream outputStream;
     private ObjectInputStream inputStream;
-
-    /**
-     * Constructs a new Client, capable of sending and receiving packets to a connected server.
-     * @param address The address to connect the client to.
-     */
-    public Client(InetSocketAddress address) {
-        socket = new Socket();
-        System.out.println(socket.getLocalAddress());
-
-        connectServer(address);
-
-        packetListeners = new ArrayList<>();
-
-        Timer listenerThread = new Timer();
-        listenerThread.schedule(new ListenerThread(), 0, 1);
-
-        System.out.println(socket.getLocalPort());
-    }
 
     /**
      * Constructs a new Client, capable of sending and receiving packets to a connected server.
@@ -116,30 +97,26 @@ public class Client {
      * Writes an object to a socket's stream.
      * @param out the object to be written to the stream
      */
-    public void writeStream(Object out) {
-        try {
-            outputStream.writeObject(out);
-            outputStream.flush();
-        } catch(IOException e) {
-            throw new RuntimeException(e);
-        }
+    public void writeStream(Object out) throws IOException {
+        outputStream.writeObject(out);
+        outputStream.flush();
     }
 
     /**
      * Writes an object to a socket's stream.
      */
-    public Object readStream() {
-        try {
-            return inputStream.readObject();
-        } catch(IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+    public Object readStream() throws IOException, ClassNotFoundException {
+        return inputStream.readObject();
     }
 
     private class ListenerThread extends TimerTask {
         @Override
         public void run() {
-            fireListeners((Packet) readStream());
+            try {
+                fireListeners((Packet) readStream());
+            } catch (IOException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

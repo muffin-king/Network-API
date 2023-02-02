@@ -5,8 +5,6 @@ import networkapi.packet.PacketEvent;
 import networkapi.packet.PacketListener;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -18,7 +16,8 @@ import java.util.TimerTask;
 public class Server {
     private final ServerSocket serverSocket;
     private final ArrayList<PacketListener> packetListeners;
-    private final ArrayList<Socket> sockets;
+    private final ArrayList<ConnectedClient> clients;
+    private final Timer clientsTimer;
 
     /**
      * Constructs a new Server, capable of sending and receiving packets to connected clients.
@@ -32,7 +31,9 @@ public class Server {
         System.out.println(serverSocket.getLocalSocketAddress());
 
         packetListeners = new ArrayList<>();
-        sockets = new ArrayList<>();
+        clients = new ArrayList<>();
+
+        clientsTimer = new Timer();
 
         Timer connectThread = new Timer();
         connectThread.schedule(new ConnectionThread(), 0, 1);
@@ -42,18 +43,18 @@ public class Server {
      * Returns an array of all connected sockets.
      * @return an array of connected sockets
      */
-    public Socket[] getSockets() {
-        Socket[] socketsArray = new Socket[sockets.size()];
-        for(int i = 0; i < socketsArray.length; i++)
-            socketsArray[i] = sockets.get(i);
-        return socketsArray;
+    public ConnectedClient[] getSockets() {
+        ConnectedClient[] ccArray = new ConnectedClient[clients.size()];
+        for(int i = 0; i < ccArray.length; i++)
+            ccArray[i] = clients.get(i);
+        return ccArray;
     }
 
     /**
      * Registers a packet listener.
      * @param listener the packet listener to register to the server
      */
-    public void registerPacketListener(PacketListener listener) {
+    public void addPacketListener(PacketListener listener) {
         packetListeners.add(listener);
     }
 
@@ -66,31 +67,24 @@ public class Server {
     /**
      * Writes an object to a socket's stream.
      * @param out the object to be written to the stream
-     * @param socket the socket whose stream will be written to
+     * @param client The client to send the object to
      */
-    public void writeStream(Object out, Socket socket) {
+    public void writeStream(Object out, ConnectedClient client) {
         try {
-            ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-            outputStream.writeObject(out);
-            outputStream.flush();
+            client.getOutputStream().writeObject(out);
+            client.getOutputStream().flush();
         } catch(IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * Writes an object to a socket's stream.
-     * @param out the object to be written to the stream
-     * @param address the address whose associated socket's tream will be written to
+     * Blocks the current thread until it reads an object from a socket's stream.
+     * @param client the client whose stream will be read from
+     * @return the object read from the stream
      */
-    public void writeStream(Object out, InetSocketAddress address) {
-        try {
-            ObjectOutputStream outputStream = new ObjectOutputStream(getSocketByAddress(address).getOutputStream());
-            outputStream.writeObject(out);
-            outputStream.flush();
-        } catch(IOException e) {
-            throw new RuntimeException(e);
-        }
+    public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
+        return client.getInputStream().readObject();
     }
 
     /**
@@ -99,7 +93,8 @@ public class Server {
      * @throws RuntimeException No connected socket is associated with the address.
      */
     public Socket getSocketByAddress(InetSocketAddress address) {
-        for(Socket socket : sockets) {
+        for(ConnectedClient client : clients) {
+            Socket socket = client.getSocket();
             InetAddress targetAddress = socket.getInetAddress();
             if(targetAddress.getHostName().equals(address.getHostName()) && socket.getPort() == address.getPort())
                 return socket;
@@ -107,36 +102,12 @@ public class Server {
         throw new RuntimeException("No such socket with address "+address.getHostName()+":"+address.getPort());
     }
 
-    /**
-     * Blocks the current thread until it reads an object from a socket's stream.
-     * @param socket the socket whose stream will be read from
-     * @return the object read from the stream
-     */
-    public Object readStream(Socket socket) {
-        try {
-            ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-            return inputStream.readObject();
-        } catch(IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public Object readStream(ObjectInputStream inputStream) {
-        try {
-            return inputStream.readObject();
-        } catch(IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private class ConnectionThread extends TimerTask {
         @Override
         public void run() {
             try {
                 Socket socket = serverSocket.accept();
-
-                Timer socketReader = new Timer();
-                socketReader.schedule(new ClientThread(socket), 0, 1);
+                clientsTimer.schedule(new ClientThread(new ConnectedClient(socket)), 0, 1);
             } catch (IOException exception) {
                 throw new RuntimeException(exception);
             }
@@ -144,30 +115,28 @@ public class Server {
     }
 
     private class ClientThread extends TimerTask {
-        private final Socket socket;
-        private final boolean isDown;
-        private final ObjectOutputStream outputStream;
-        private final ObjectInputStream inputStream;
-        public ClientThread(Socket socket) {
-            this.socket = socket;
+        private final ConnectedClient client;
+        private boolean isDown;
+        public ClientThread(ConnectedClient client) {
+            this.client = client;
             isDown = false;
-            System.out.println("Socket "+socket+" connected");
-            sockets.add(socket);
-
-            try {
-                outputStream = new ObjectOutputStream(socket.getOutputStream());
-                inputStream = new ObjectInputStream(socket.getInputStream());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            System.out.println("Socket "+client.getSocket()+" connected");
+            clients.add(client);
         }
         @Override
         public void run() {
             if(!isDown) {
-                fireListeners((Packet) readStream(socket));
+                try {
+                    fireListeners((Packet) readStream(client));
+                } catch (IOException e) {
+                    isDown = true;
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
             } else {
-                System.out.println("Terminated socket "+socket);
-                sockets.remove(socket);
+                clients.remove(client);
+                client.destroy();
+                System.out.println("Terminated socket "+ client);
                 cancel();
             }
         }
