@@ -4,8 +4,8 @@ import networkapi.packet.Packet;
 import networkapi.packet.PacketEvent;
 import networkapi.packet.PacketListener;
 
-import javax.swing.*;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
@@ -20,6 +20,7 @@ public class Client {
 
     /**
      * Constructs a new Client, capable of sending and receiving packets to a connected server.
+     * @param address The address to connect the client to.
      */
     public Client(InetSocketAddress address) {
         socket = new Socket();
@@ -29,12 +30,17 @@ public class Client {
 
         packetListeners = new ArrayList<>();
 
-        Timer clientThread = new Timer();
-        clientThread.schedule(new ListenerThread(), 0, 1);
+        Timer listenerThread = new Timer();
+        listenerThread.schedule(new ListenerThread(), 0, 1);
 
         System.out.println(socket.getLocalPort());
     }
 
+    /**
+     * Constructs a new Client, capable of sending and receiving packets to a connected server.
+     * @param hostname The hostname of the address to connect to.
+     * @param port The port of the address to connect to.
+     */
     public Client(String hostname, int port) {
         socket = new Socket();
         System.out.println(socket.getLocalAddress());
@@ -49,6 +55,9 @@ public class Client {
         System.out.println(socket.getLocalPort());
     }
 
+    /**
+     * Constructs a new unconnected Client.
+     */
     public Client() {
         socket = new Socket();
         System.out.println(socket.getLocalAddress());
@@ -61,11 +70,15 @@ public class Client {
         System.out.println(socket.getLocalPort());
     }
 
+    public Socket getSocket() {
+        return socket;
+    }
+
     /**
      * Registers a packet listener.
      * @param listener the packet listener to register to the server
      */
-    public void registerPacketListener(PacketListener listener) {
+    public void addPacketListener(PacketListener listener) {
         packetListeners.add(listener);
     }
 

@@ -38,6 +38,13 @@ public class Server {
         connectThread.schedule(new ConnectionThread(), 0, 1);
     }
 
+    public Socket[] getSockets() {
+        Socket[] socketsArray = new Socket[sockets.size()];
+        for(int i = 0; i < socketsArray.length; i++)
+            socketsArray[i] = sockets.get(i);
+        return socketsArray;
+    }
+
     /**
      * Registers a packet listener.
      * @param listener the packet listener to register to the server
