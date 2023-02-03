@@ -21,10 +21,11 @@ public class Server {
 
     /**
      * Constructs a new Server, capable of sending and receiving packets to connected clients.
+     * @param port The port to open the server on
      */
-    public Server() {
+    public Server(int port) {
         try {
-            serverSocket = new ServerSocket(8081);
+            serverSocket = new ServerSocket(port);
         } catch(IOException e) {
             throw new RuntimeException(e);
         }
@@ -40,10 +41,10 @@ public class Server {
     }
 
     /**
-     * Returns an array of all connected sockets.
-     * @return an array of connected sockets
+     * Returns an array of all connected clients.
+     * @return an array of connected clients
      */
-    public ConnectedClient[] getSockets() {
+    public ConnectedClient[] getClients() {
         ConnectedClient[] ccArray = new ConnectedClient[clients.size()];
         for(int i = 0; i < ccArray.length; i++)
             ccArray[i] = clients.get(i);
@@ -52,7 +53,7 @@ public class Server {
 
     /**
      * Registers a packet listener.
-     * @param listener the packet listener to register to the server
+     * @param listener the packet listener to add to the server
      */
     public void addPacketListener(PacketListener listener) {
         packetListeners.add(listener);
@@ -65,7 +66,7 @@ public class Server {
     }
 
     /**
-     * Writes an object to a socket's stream.
+     * Writes an object to a client's output stream.
      * @param out the object to be written to the stream
      * @param client The client to send the object to
      */
@@ -88,8 +89,9 @@ public class Server {
     }
 
     /**
-     * Returns a socket associated with the socket address.
+     * Returns a client associated with the socket address.
      * @param address the address of the socket
+     * @return The client associated with the socket address
      * @throws RuntimeException No connected socket is associated with the address.
      */
     public Socket getSocketByAddress(InetSocketAddress address) {
