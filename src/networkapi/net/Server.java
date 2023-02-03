@@ -75,7 +75,8 @@ public class Server {
             client.getOutputStream().writeObject(out);
             client.getOutputStream().flush();
         } catch(IOException e) {
-            throw new RuntimeException(e);
+            if(!e.getMessage().equals("Connection reset"))
+                throw new RuntimeException(e);
         }
     }
 
@@ -85,7 +86,13 @@ public class Server {
      * @return the object read from the stream
      */
     public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
-        return client.getInputStream().readObject();
+        try {
+            return client.getInputStream().readObject();
+        } catch(IOException e) {
+            if(!e.getMessage().contains("Connection reset"))
+                throw e;
+        }
+        return null;
     }
 
     /**
