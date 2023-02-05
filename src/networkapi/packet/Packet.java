@@ -1,18 +1,25 @@
 package networkapi.packet;
 
+import networkapi.net.Client;
+import networkapi.net.Server;
+
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 
+/**
+ * A {@code Packet} is a way to store data for sending between a {@link Client} and a {@link Server}.
+ */
 public class Packet implements Serializable, Cloneable {
     protected final int ID;
-    protected Object data;
+    protected final Object data;
     protected long time;
     protected final InetSocketAddress address;
 
     /**
-     * Constructs a new Packet.
+     * Constructs a new {@code Packet}.
      * @param  ID The integer ID of the packet
      * @param data The object contained by the packet
+     * @param address The address from where the packet was sent from
      */
     public Packet(int ID, Object data, InetSocketAddress address) {
         this.ID = ID;
@@ -21,6 +28,10 @@ public class Packet implements Serializable, Cloneable {
         this.address = address;
     }
 
+    /**
+     * Returns the packet's origin address.
+     * @return The address of the packet's origin
+     */
     public InetSocketAddress getAddress() {
         return address;
     }
@@ -34,17 +45,7 @@ public class Packet implements Serializable, Cloneable {
     }
 
     /**
-     * Sets the object contained by the packet.
-     *
-     * @param data the object to be contained in the packet
-     */
-    public void setData(Object data) {
-        this.data = data;
-    }
-
-    /**
      * Returns the assigned integer ID of the packet.
-     *
      * @return the integer assigned to identify the packet
      */
     public int getID() {
@@ -53,7 +54,6 @@ public class Packet implements Serializable, Cloneable {
 
     /**
      * Returns the time that the packet was created.
-     *
      * @return the time in milliseconds that the packet was created at
      */
     public long getTime() {

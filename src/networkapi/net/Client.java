@@ -13,14 +13,18 @@ import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
+/**
+ * A Client is a class capable of connecting to {@link Server Servers}, as well as sending and receiving {@link Packet Packets}.
+ */
 public class Client {
     private Socket socket;
     private final ArrayList<PacketListener> packetListeners;
     private ObjectOutputStream outputStream;
     private ObjectInputStream inputStream;
+    private Timer listenerThread;
 
     /**
-     * Constructs a new Client, capable of sending and receiving packets to a connected server.
+     * Constructs a new {@code Client} and attempts to connect to the specified address.
      * @param hostname The hostname of the address to connect to.
      * @param port The port of the address to connect to.
      */
@@ -31,9 +35,6 @@ public class Client {
         connectServer(new InetSocketAddress(hostname, port));
 
         packetListeners = new ArrayList<>();
-
-        Timer clientThread = new Timer();
-        clientThread.schedule(new ListenerThread(), 0, 1);
 
         System.out.println(socket.getLocalPort());
     }
@@ -47,19 +48,20 @@ public class Client {
 
         packetListeners = new ArrayList<>();
 
-        Timer clientThread = new Timer();
-        clientThread.schedule(new ListenerThread(), 0, 1);
-
         System.out.println(socket.getLocalPort());
     }
 
+    /**
+     * Returns the client's socket.
+     * @return The client's {@link Socket}
+     */
     public Socket getSocket() {
         return socket;
     }
 
     /**
-     * Registers a packet listener.
-     * @param listener the packet listener to register to the server
+     * Registers a packet listener implementing {@link PacketListener}.
+     * @param listener the packet listener to register to the client
      */
     public void addPacketListener(PacketListener listener) {
         packetListeners.add(listener);
@@ -72,51 +74,67 @@ public class Client {
     }
 
     /**
-     * Connects to a server at the specified address.
+     * Connects to a {@link Server} at the specified address.
      * @param address the address to attempt to connect to
+     * @throws RuntimeException The client is already connected to an address.
      */
     public void connectServer(InetSocketAddress address) {
-        try {
-            socket.connect(address);
-            outputStream = new ObjectOutputStream(socket.getOutputStream());
-            inputStream = new ObjectInputStream(socket.getInputStream());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if(socket.isConnected()) {
+            throw new RuntimeException("Cannot connect a Client that is already connected to an address");
+        } else {
+            try {
+                socket.connect(address);
+                outputStream = new ObjectOutputStream(socket.getOutputStream());
+                inputStream = new ObjectInputStream(socket.getInputStream());
+
+                listenerThread = new Timer();
+                listenerThread.schedule(new ListenerTask(), 0, 1);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println("Connected to server " + address.getHostName());
         }
-        System.out.println("Connected to server " + address.getHostName());
     }
 
     /**
-     * Disconnects from the current server by instantiating a new Socket in place of the current socket.
+     * Disconnects from the currently connected {@link Server}.
+     * @throws RuntimeException The client is not connected to any address.
      */
-    public void disconnect() {
-        socket = new Socket();
+    public void disconnect() throws IOException {
+        if(socket.isConnected()) {
+            listenerThread.cancel();
+
+            outputStream.close();
+            inputStream.close();
+            socket.close();
+            socket = new Socket();
+        } else {
+            throw new RuntimeException("Cannot disconnect an unconnected Client");
+        }
     }
 
     /**
-     * Writes an object to a socket's stream.
-     * @param out the object to be written to the stream
+     * Writes a {@code Packet} to the client's output stream.
+     * @param out the packet to be written to the stream
      */
-    public void writeStream(Object out) throws IOException {
+    public void writeStream(Packet out) throws IOException {
         outputStream.writeObject(out);
         outputStream.flush();
     }
 
     /**
-     * Writes an object to a socket's stream.
+     * Reads a {@code Packet} from the client's input stream.
      */
-    public Object readStream() throws IOException, ClassNotFoundException {
-        return inputStream.readObject();
+    public Packet readStream() throws IOException, ClassNotFoundException {
+        return (Packet) inputStream.readObject();
     }
 
-    private class ListenerThread extends TimerTask {
+    private class ListenerTask extends TimerTask {
         @Override
         public void run() {
             try {
-                fireListeners((Packet) readStream());
-            } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
+                fireListeners(readStream());
+            } catch (IOException | ClassNotFoundException ignored) {}
         }
     }
 }
