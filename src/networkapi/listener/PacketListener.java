@@ -1,4 +1,4 @@
-package networkapi.packet;
+package networkapi.listener;
 
 /**
  * An interface with which to create packet event listeners that fire {@code onPacketReceive} when a packet is received.

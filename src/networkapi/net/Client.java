@@ -1,8 +1,7 @@
 package networkapi.net;
 
-import networkapi.packet.Packet;
-import networkapi.packet.PacketEvent;
-import networkapi.packet.PacketListener;
+import networkapi.listener.PacketEvent;
+import networkapi.listener.PacketListener;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -30,7 +29,6 @@ public class Client {
      */
     public Client(String hostname, int port) {
         socket = new Socket();
-        System.out.println(socket.getLocalAddress());
 
         connectServer(new InetSocketAddress(hostname, port));
 
@@ -93,6 +91,7 @@ public class Client {
                 throw new RuntimeException(e);
             }
             System.out.println("Connected to server " + address.getHostName());
+            System.out.println("Socket address: " + socket.getLocalAddress().getHostName());
         }
     }
 
@@ -117,7 +116,7 @@ public class Client {
      * Writes a {@code Packet} to the client's output stream.
      * @param out the packet to be written to the stream
      */
-    public void writeStream(Packet out) throws IOException {
+    public void writeStream(Object out) throws IOException {
         outputStream.writeObject(out);
         outputStream.flush();
     }
@@ -125,15 +124,15 @@ public class Client {
     /**
      * Reads a {@code Packet} from the client's input stream.
      */
-    public Packet readStream() throws IOException, ClassNotFoundException {
-        return (Packet) inputStream.readObject();
+    public Object readStream() throws IOException, ClassNotFoundException {
+        return inputStream.readObject();
     }
 
     private class ListenerTask extends TimerTask {
         @Override
         public void run() {
             try {
-                fireListeners(readStream());
+                fireListeners((Packet) readStream());
             } catch (IOException | ClassNotFoundException ignored) {}
         }
     }

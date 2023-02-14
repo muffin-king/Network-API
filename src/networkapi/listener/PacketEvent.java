@@ -1,4 +1,6 @@
-package networkapi.packet;
+package networkapi.listener;
+
+import networkapi.net.Packet;
 
 /**
  * A {@code PacketEvent} is a class that represents when a {@link Packet} was received.

@@ -1,8 +1,6 @@
-package networkapi.packet;
+package networkapi.net;
 
-import networkapi.net.Client;
-import networkapi.net.Server;
-
+import java.io.Serial;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 
@@ -10,10 +8,12 @@ import java.net.InetSocketAddress;
  * A {@code Packet} is a way to store data for sending between a {@link Client} and a {@link Server}.
  */
 public class Packet implements Serializable, Cloneable {
-    protected final int ID;
-    protected final Object data;
-    protected long time;
-    protected final InetSocketAddress address;
+    @Serial
+    private static final long serialVersionUID = -1203921031231233412L;
+    private final int ID;
+    private final Object data;
+    private final long time;
+    private final InetSocketAddress address;
 
     /**
      * Constructs a new {@code Packet}.

@@ -1,8 +1,9 @@
 package networkapi.net;
 
-import networkapi.packet.Packet;
-import networkapi.packet.PacketEvent;
-import networkapi.packet.PacketListener;
+import networkapi.listener.ConnectionListener;
+import networkapi.listener.ConnectionEvent;
+import networkapi.listener.PacketEvent;
+import networkapi.listener.PacketListener;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -19,6 +20,8 @@ import java.util.TimerTask;
 public class Server {
     private final ServerSocket serverSocket;
     private final ArrayList<PacketListener> packetListeners;
+
+    private final ArrayList<ConnectionListener> connectionListeners;
     private final ArrayList<ConnectedClient> clients;
 
     /**
@@ -30,6 +33,7 @@ public class Server {
         System.out.println(serverSocket.getLocalSocketAddress());
 
         packetListeners = new ArrayList<>();
+        connectionListeners = new ArrayList<>();
         clients = new ArrayList<>();
 
         Timer connectThread = new Timer();
@@ -55,10 +59,18 @@ public class Server {
         packetListeners.add(listener);
     }
 
-    private void fireListeners(Packet packet) {
-        for(PacketListener listener : packetListeners) {
+    public void addConnectionListener(ConnectionListener listener) {
+        connectionListeners.add(listener);
+    }
+
+    void firePacketListeners(Packet packet) {
+        for(PacketListener listener : packetListeners)
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
-        }
+    }
+
+    void fireConnectionListeners(ConnectedClient client) {
+        for(ConnectionListener listener : connectionListeners)
+            listener.onClientConnection(new ConnectionEvent(client, System.currentTimeMillis()));
     }
 
     /**
@@ -66,7 +78,7 @@ public class Server {
      * @param out the {@link Packet} to be written to the stream
      * @param client The client to send the object to
      */
-    public void writeStream(Packet out, ConnectedClient client) throws IOException {
+    public void writeStream(Object out, ConnectedClient client) throws IOException {
         client.getOutputStream().writeObject(out);
         client.getOutputStream().flush();
     }
@@ -77,8 +89,8 @@ public class Server {
      * @param client the client whose stream will be read from
      * @return the {@link Packet} read from the stream
      */
-    public Packet readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
-        return (Packet) client.getInputStream().readObject();
+    public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
+        return client.getInputStream().readObject();
     }
 
     /**
@@ -97,6 +109,14 @@ public class Server {
         throw new RuntimeException("No such socket with address "+address.getHostName()+":"+address.getPort());
     }
 
+    //private ClientTask getTaskbyClient(ConnectedClient client) {
+    //    for(ClientTask clientTask : clients) {
+    //        if(clientTask.getClient().equals(client))
+    //            return clientTask;
+    //    }
+    //    throw new RuntimeException("No such task with client "+client);
+    //}
+
     private class ConnectionThread extends TimerTask {
         @Override
         public void run() {
@@ -108,30 +128,10 @@ public class Server {
         }
     }
 
-    private class ClientThread extends TimerTask {
-        private final ConnectedClient client;
-        public ClientThread(ConnectedClient client) {
-            this.client = client;
-        }
-        @Override
-        public void run() {
-            try {
-                fireListeners(readStream(client));
-            } catch (IOException | ClassNotFoundException e) {
-                try {
-                    disconnectClient(client);
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-                cancel();
-            }
-        }
-    }
-
     private void addClient(Socket socket) {
-        ConnectedClient client = new ConnectedClient(socket);
-        client.getClientThread().schedule(new ClientThread(client), 0, 1);
+        ConnectedClient client = new ConnectedClient(socket, this);
         clients.add(client);
+        fireConnectionListeners(client);
         System.out.println("Socket "+client.getSocket()+" connected");
     }
 
@@ -140,7 +140,7 @@ public class Server {
      * @param client The {@link ConnectedClient} to disconnect.
      */
     public void disconnectClient(ConnectedClient client) throws IOException {
-        System.out.println("Terminating socket "+ client.getSocket());
+        System.out.println("Terminating client "+ client.getSocket());
         clients.remove(client);
         client.destroy();
     }
