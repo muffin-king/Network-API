@@ -131,7 +131,6 @@ public class Server {
         ConnectedClient client = new ConnectedClient(socket, this);
         clients.add(client);
         fireConnectionListeners(client);
-        System.out.println("Socket "+client.getSocket()+" connected");
     }
 
     /**
@@ -139,7 +138,6 @@ public class Server {
      * @param client The {@link ConnectedClient} to disconnect.
      */
     public void disconnectClient(ConnectedClient client) throws IOException {
-        System.out.println("Terminating client "+ client.getSocket());
         clients.remove(client);
         client.destroy();
     }
