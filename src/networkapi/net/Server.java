@@ -30,7 +30,6 @@ public class Server {
      */
     public Server(int port) throws IOException {
         serverSocket = new ServerSocket(port);
-        System.out.println(serverSocket.getLocalSocketAddress());
 
         packetListeners = new ArrayList<>();
         connectionListeners = new ArrayList<>();
@@ -108,14 +107,6 @@ public class Server {
         throw new RuntimeException("No such socket with address "+address.getHostName()+":"+address.getPort());
     }
 
-    //private ClientTask getTaskbyClient(ConnectedClient client) {
-    //    for(ClientTask clientTask : clients) {
-    //        if(clientTask.getClient().equals(client))
-    //            return clientTask;
-    //    }
-    //    throw new RuntimeException("No such task with client "+client);
-    //}
-
     private class ConnectionThread extends TimerTask {
         @Override
         public void run() {
@@ -131,7 +122,6 @@ public class Server {
         ConnectedClient client = new ConnectedClient(socket, this);
         clients.add(client);
         fireConnectionListeners(client);
-        System.out.println("Socket "+client.getSocket()+" connected");
     }
 
     /**
@@ -139,7 +129,6 @@ public class Server {
      * @param client The {@link ConnectedClient} to disconnect.
      */
     public void disconnectClient(ConnectedClient client) throws IOException {
-        System.out.println("Terminating client "+ client.getSocket());
         clients.remove(client);
         client.destroy();
     }

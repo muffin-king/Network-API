@@ -33,8 +33,6 @@ public class Client {
         connectServer(new InetSocketAddress(hostname, port));
 
         packetListeners = new ArrayList<>();
-
-        System.out.println(socket.getLocalPort());
     }
 
     /**
@@ -42,11 +40,8 @@ public class Client {
      */
     public Client() {
         socket = new Socket();
-        System.out.println(socket.getLocalAddress());
 
         packetListeners = new ArrayList<>();
-
-        System.out.println(socket.getLocalPort());
     }
 
     /**
@@ -82,6 +77,14 @@ public class Client {
     }
 
     /**
+     * Returns the state of the client's connection
+     * @return true if the client's {@code Socket} is both connected to an address and is not closed
+     */
+    public boolean isConnected() {
+        return socket.isConnected() && !socket.isClosed();
+    }
+
+    /**
      * Registers a packet listener implementing {@link PacketListener}.
      * @param listener the packet listener to register to the client
      */
@@ -114,8 +117,6 @@ public class Client {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            System.out.println("Connected to server " + address.getHostName());
-            System.out.println("Socket address: " + socket.getLocalAddress().getHostName());
         }
     }
 
@@ -157,7 +158,9 @@ public class Client {
         public void run() {
             try {
                 fireListeners((Packet) readStream());
-            } catch (IOException | ClassNotFoundException ignored) {}
+            } catch (IOException | ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
