@@ -1,28 +1,38 @@
-package networkapi.packet;
+package networkapi.net;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 
+/**
+ * A {@code Packet} is a way to store data for sending between a {@link Client} and a {@link Server}.
+ */
 public class Packet implements Serializable, Cloneable {
-    protected final int ID;
-    protected Object data;
-    protected long time;
-    protected final InetSocketAddress address;
+    private final int ID;
+    private final Object data;
+    private final long time;
+    private final String hostname;
+    private final int port;
 
     /**
-     * Constructs a new Packet.
-     * @param  ID The integer ID of the packet
+     * Constructs a new {@code Packet}.
+     * @param ID The integer ID of the packet
      * @param data The object contained by the packet
+     * @param client The client from where the packet was sent from
      */
-    public Packet(int ID, Object data, InetSocketAddress address) {
+    public Packet(int ID, Object data, Client client) {
         this.ID = ID;
         this.data = data;
         time = System.currentTimeMillis();
-        this.address = address;
+        this.hostname = client.getHostname();
+        this.port = client.getPort();
     }
 
+    /**
+     * Returns the packet's origin address.
+     * @return The address of the packet's origin
+     */
     public InetSocketAddress getAddress() {
-        return address;
+        return new InetSocketAddress(hostname, port);
     }
 
     /**
@@ -34,17 +44,7 @@ public class Packet implements Serializable, Cloneable {
     }
 
     /**
-     * Sets the object contained by the packet.
-     *
-     * @param data the object to be contained in the packet
-     */
-    public void setData(Object data) {
-        this.data = data;
-    }
-
-    /**
      * Returns the assigned integer ID of the packet.
-     *
      * @return the integer assigned to identify the packet
      */
     public int getID() {
@@ -53,11 +53,19 @@ public class Packet implements Serializable, Cloneable {
 
     /**
      * Returns the time that the packet was created.
-     *
      * @return the time in milliseconds that the packet was created at
      */
     public long getTime() {
         return time;
+    }
+
+    /**
+     * Returns whether the packet came from the specified client.
+     * @param client The client to check
+     * @return true if the packet came from the specified client, false otherwise
+     */
+    public boolean sameSource(ConnectedClient client) {
+        return client.getSocket().getInetAddress().getHostName().equals(hostname) && client.getSocket().getPort() == port;
     }
 
     public boolean equals(Object object) {
