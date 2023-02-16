@@ -8,12 +8,11 @@ import java.net.InetSocketAddress;
  * A {@code Packet} is a way to store data for sending between a {@link Client} and a {@link Server}.
  */
 public class Packet implements Serializable, Cloneable {
-    @Serial
-    private static final long serialVersionUID = -1203921031231233412L;
     private final int ID;
     private final Object data;
     private final long time;
-    private final InetSocketAddress address;
+    private final String hostname;
+    private final int port;
 
     /**
      * Constructs a new {@code Packet}.
@@ -25,7 +24,8 @@ public class Packet implements Serializable, Cloneable {
         this.ID = ID;
         this.data = data;
         time = System.currentTimeMillis();
-        this.address = address;
+        this.hostname = address.getHostName();
+        this.port = address.getPort();
     }
 
     /**
@@ -33,7 +33,7 @@ public class Packet implements Serializable, Cloneable {
      * @return The address of the packet's origin
      */
     public InetSocketAddress getAddress() {
-        return address;
+        return new InetSocketAddress(hostname, port);
     }
 
     /**
@@ -58,6 +58,15 @@ public class Packet implements Serializable, Cloneable {
      */
     public long getTime() {
         return time;
+    }
+
+    /**
+     * Returns whether the packet came from the specified client.
+     * @param client The client to check
+     * @return true if the packet came from the specified client, false otherwise
+     */
+    public boolean sameSource(ConnectedClient client) {
+        return client.getSocket().getInetAddress().getHostName().equals(hostname) && client.getSocket().getPort() == port;
     }
 
     public boolean equals(Object object) {

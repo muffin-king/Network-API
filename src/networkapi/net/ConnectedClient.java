@@ -69,7 +69,7 @@ public class ConnectedClient {
      * Destroys the client closing its streams and closing the socket.
      * Does not remove the client from a {@code Server}'s list of connected clients.
      */
-    public void destroy() throws IOException {
+    void destroy() throws IOException {
         thread.cancel();
         outputStream.close();
         inputStream.close();
@@ -77,7 +77,7 @@ public class ConnectedClient {
         isDestroyed = true;
     }
 
-    public boolean isDestroyed() {
+    boolean isDestroyed() {
         return isDestroyed;
     }
 

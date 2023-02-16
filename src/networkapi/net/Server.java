@@ -99,12 +99,11 @@ public class Server {
      * @return The {@link ConnectedClient} associated with the socket address
      * @throws RuntimeException No connected socket is associated with the address.
      */
-    public Socket getSocketByAddress(InetSocketAddress address) {
+    public ConnectedClient getClientByAddress(InetSocketAddress address) {
         for(ConnectedClient client : clients) {
-            Socket socket = client.getSocket();
-            InetAddress targetAddress = socket.getInetAddress();
-            if(targetAddress.getHostName().equals(address.getHostName()) && socket.getPort() == address.getPort())
-                return socket;
+            InetAddress targetAddress = client.getSocket().getInetAddress();
+            if(targetAddress.getHostName().equals(address.getHostName()) && client.getSocket().getPort() == address.getPort())
+                return client;
         }
         throw new RuntimeException("No such socket with address "+address.getHostName()+":"+address.getPort());
     }
