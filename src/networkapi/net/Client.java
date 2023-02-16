@@ -50,11 +50,35 @@ public class Client {
     }
 
     /**
-     * Returns the client's socket.
-     * @return The client's {@link Socket}
+     * Returns the client's hostname.
+     * @return The client's hostname
      */
-    public Socket getSocket() {
-        return socket;
+    public String getHostname() {
+        return socket.getLocalAddress().getHostName();
+    }
+
+    /**
+     * Returns the client's port.
+     * @return The client's port
+     */
+    public int getPort() {
+        return socket.getLocalPort();
+    }
+
+    /**
+     * Returns the hostname the client is connected to.
+     * @return The hostname the client is connected to
+     */
+    public String getConnectedHostname() {
+        return socket.getInetAddress().getHostName();
+    }
+
+    /**
+     * Returns the port the client is connected to.
+     * @return The port the client is connected to
+     */
+    public int getConnectedPort() {
+        return socket.getPort();
     }
 
     /**

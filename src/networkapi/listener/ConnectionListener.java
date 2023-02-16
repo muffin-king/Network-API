@@ -5,8 +5,8 @@ package networkapi.listener;
  */
 public interface ConnectionListener {
     /**
-     * Method that is fired upon receiving any packet.
-     * @param e the {@link PacketEvent} that is constructed upon the packet's arrival
+     * Method that is fired upon a client connection.
+     * @param e the {@link ConnectionEvent} that is constructed upon connection
      */
     void onClientConnection(ConnectionEvent e);
 }

@@ -7,7 +7,7 @@ public class ConnectionEvent {
     private final long timeConnected;
 
     /**
-     * Constructs a new {@code PacketEvent}.
+     * Constructs a new {@code ConnectionEvent}.
      * @param client the client that the {@code ConnectionEvent} will contain
      * @param timeConnected the time the client connected
      */

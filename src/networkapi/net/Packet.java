@@ -1,6 +1,5 @@
 package networkapi.net;
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 
@@ -16,16 +15,16 @@ public class Packet implements Serializable, Cloneable {
 
     /**
      * Constructs a new {@code Packet}.
-     * @param  ID The integer ID of the packet
+     * @param ID The integer ID of the packet
      * @param data The object contained by the packet
-     * @param address The address from where the packet was sent from
+     * @param client The client from where the packet was sent from
      */
-    public Packet(int ID, Object data, InetSocketAddress address) {
+    public Packet(int ID, Object data, Client client) {
         this.ID = ID;
         this.data = data;
         time = System.currentTimeMillis();
-        this.hostname = address.getHostName();
-        this.port = address.getPort();
+        this.hostname = client.getHostname();
+        this.port = client.getPort();
     }
 
     /**
