@@ -19,7 +19,7 @@ public class Packet implements Serializable, Cloneable {
      * @param data The object contained by the packet
      * @param client The client from where the packet was sent from
      */
-    public Packet(int ID, Object data, Client client) {
+    public Packet(int ID, Serializable data, Client client) {
         this.ID = ID;
         this.data = data;
         time = System.currentTimeMillis();
