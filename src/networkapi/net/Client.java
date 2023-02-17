@@ -8,6 +8,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -127,9 +128,8 @@ public class Client {
     public void disconnect() throws IOException {
         if(socket.isConnected()) {
             listenerThread.cancel();
-
-            outputStream.close();
-            inputStream.close();
+            socket.shutdownOutput();
+            socket.shutdownInput();
             socket.close();
             socket = new Socket();
         } else {
@@ -150,7 +150,14 @@ public class Client {
      * Reads a {@code Packet} from the client's input stream.
      */
     public Object readStream() throws IOException, ClassNotFoundException {
-        return inputStream.readObject();
+        try {
+            return inputStream.readObject();
+        } catch(SocketException e) {
+            if(e.getMessage().equals("Socket closed"))
+                return null;
+            else
+                throw new RuntimeException(e);
+        }
     }
 
     private class ListenerTask extends TimerTask {

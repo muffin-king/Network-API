@@ -6,10 +6,7 @@ import networkapi.listener.PacketEvent;
 import networkapi.listener.PacketListener;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -23,6 +20,7 @@ public class Server {
 
     private final ArrayList<ConnectionListener> connectionListeners;
     private final ArrayList<ConnectedClient> clients;
+    private Timer connectThread;
 
     /**
      * Constructs a new {@code Server}.
@@ -35,7 +33,7 @@ public class Server {
         connectionListeners = new ArrayList<>();
         clients = new ArrayList<>();
 
-        Timer connectThread = new Timer();
+        connectThread = new Timer();
         connectThread.schedule(new ConnectionThread(), 0, 1);
     }
 
@@ -89,7 +87,16 @@ public class Server {
      * @return the {@link Packet} read from the stream
      */
     public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
-        return client.getInputStream().readObject();
+        try {
+            return client.getInputStream().readObject();
+        } catch(SocketException e) {
+            if(e.getMessage().equals("Socket closed"))
+                return null;
+            else {
+                disconnectClient(client);
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -131,5 +138,16 @@ public class Server {
     public void disconnectClient(ConnectedClient client) throws IOException {
         clients.remove(client);
         client.destroy();
+    }
+
+    /**
+     * Shuts down the server.
+     * @throws IOException the server socket throws an IOException while closing
+     */
+    public void shutDown() throws IOException {
+        connectThread.cancel();
+        for(ConnectedClient client : clients)
+            disconnectClient(client);
+        serverSocket.close();
     }
 }

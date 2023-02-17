@@ -28,6 +28,19 @@ public class Packet implements Serializable, Cloneable {
     }
 
     /**
+     * Constructs a new {@code Packet}.
+     * @param ID The integer ID of the packet
+     * @param data The object contained by the packet
+     */
+    public Packet(int ID, Serializable data) {
+        this.ID = ID;
+        this.data = data;
+        time = System.currentTimeMillis();
+        this.hostname = "";
+        this.port = -1;
+    }
+
+    /**
      * Returns the packet's origin address.
      * @return The address of the packet's origin
      */
