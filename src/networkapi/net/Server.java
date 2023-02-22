@@ -1,9 +1,6 @@
 package networkapi.net;
 
-import networkapi.listener.ConnectionListener;
-import networkapi.listener.ConnectionEvent;
-import networkapi.listener.PacketEvent;
-import networkapi.listener.PacketListener;
+import networkapi.listener.*;
 
 import java.io.IOException;
 import java.net.*;
@@ -70,14 +67,24 @@ public class Server {
             listener.onClientConnection(new ConnectionEvent(client, System.currentTimeMillis()));
     }
 
+    void fireDisconnectionListeners(ConnectedClient client, int reason) {
+        for(ConnectionListener listener : connectionListeners)
+            listener.onClientDisconnection(new DisconnectionEvent(client, System.currentTimeMillis(), reason));
+    }
+
     /**
      * Writes a packet to a client's output stream.
      * @param out the {@link Packet} to be written to the stream
      * @param client The client to send the object to
      */
     public void writeStream(Object out, ConnectedClient client) throws IOException {
-        client.getOutputStream().writeObject(out);
-        client.getOutputStream().flush();
+        try {
+            client.getOutputStream().writeObject(out);
+            client.getOutputStream().flush();
+        } catch(IOException e) {
+            disconnectClient(client, DisconnectionEvent.PACKET_SEND_EXCEPTION);
+            throw e;
+        }
     }
 
     /**
@@ -89,12 +96,12 @@ public class Server {
     public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
         try {
             return client.getInputStream().readObject();
-        } catch(SocketException e) {
-            if(e.getMessage().equals("Socket closed"))
+        } catch(IOException | ClassNotFoundException e) {
+            disconnectClient(client, DisconnectionEvent.PACKET_READ_EXCEPTION);
+            if(e.getMessage().equals("Socket closed")) {
                 return null;
-            else {
-                disconnectClient(client);
-                throw new RuntimeException(e);
+            } else {
+                throw e;
             }
         }
     }
@@ -119,8 +126,8 @@ public class Server {
         public void run() {
             try {
                 addClient(serverSocket.accept());
-            } catch (IOException exception) {
-                throw new RuntimeException(exception);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -131,6 +138,12 @@ public class Server {
         fireConnectionListeners(client);
     }
 
+    private void disconnectClient(ConnectedClient client, int reason) throws IOException {
+        clients.remove(client);
+        client.destroy();
+        fireDisconnectionListeners(client, reason);
+    }
+
     /**
      * Disconnects a client from the server.
      * @param client The {@link ConnectedClient} to disconnect.
@@ -138,6 +151,7 @@ public class Server {
     public void disconnectClient(ConnectedClient client) throws IOException {
         clients.remove(client);
         client.destroy();
+        fireDisconnectionListeners(client, DisconnectionEvent.SERVER_DISCONNECTION);
     }
 
     /**

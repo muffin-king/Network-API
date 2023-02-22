@@ -9,4 +9,10 @@ public interface ConnectionListener {
      * @param e the {@link ConnectionEvent} that is constructed upon connection
      */
     void onClientConnection(ConnectionEvent e);
+
+    /**
+     * Method that is fired upon a client disconnection.
+     * @param e the {@link DisconnectionEvent} that is constructed upon disconnection
+     */
+    void onClientDisconnection(DisconnectionEvent e);
 }
