@@ -78,13 +78,8 @@ public class Server {
      * @param client The client to send the object to
      */
     public void writeStream(Object out, ConnectedClient client) throws IOException {
-        try {
-            client.getOutputStream().writeObject(out);
-            client.getOutputStream().flush();
-        } catch(IOException e) {
-            disconnectClient(client, DisconnectionEvent.PACKET_SEND_EXCEPTION);
-            throw e;
-        }
+        client.getOutputStream().writeObject(out);
+        client.getOutputStream().flush();
     }
 
     /**
@@ -93,17 +88,8 @@ public class Server {
      * @param client the client whose stream will be read from
      * @return the {@link Packet} read from the stream
      */
-    public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
-        try {
-            return client.getInputStream().readObject();
-        } catch(IOException | ClassNotFoundException e) {
-            disconnectClient(client, DisconnectionEvent.PACKET_READ_EXCEPTION);
-            if(e.getMessage().equals("Socket closed")) {
-                return null;
-            } else {
-                throw e;
-            }
-        }
+    protected Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
+        return client.getInputStream().readObject();
     }
 
     /**

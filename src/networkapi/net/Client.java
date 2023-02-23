@@ -149,15 +149,8 @@ public class Client {
     /**
      * Reads a {@code Packet} from the client's input stream.
      */
-    public Object readStream() throws IOException, ClassNotFoundException {
-        try {
-            return inputStream.readObject();
-        } catch(SocketException e) {
-            if(e.getMessage().equals("Socket closed"))
-                return null;
-            else
-                throw new RuntimeException(e);
-        }
+    protected Object readStream() throws IOException, ClassNotFoundException {
+        return inputStream.readObject();
     }
 
     private class ListenerTask extends TimerTask {
