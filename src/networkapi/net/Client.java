@@ -3,13 +3,14 @@ package networkapi.net;
 import networkapi.listener.PacketEvent;
 import networkapi.listener.PacketListener;
 
+import javax.swing.event.EventListenerList;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.EventListener;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -18,31 +19,17 @@ import java.util.TimerTask;
  */
 public class Client {
     private Socket socket;
-    private final ArrayList<PacketListener> packetListeners;
+    private final EventListenerList listeners;
     private ObjectOutputStream outputStream;
     private ObjectInputStream inputStream;
     private Timer listenerThread;
-
-    /**
-     * Constructs a new {@code Client} and attempts to connect to the specified address.
-     * @param hostname The hostname of the address to connect to.
-     * @param port The port of the address to connect to.
-     */
-    public Client(String hostname, int port) {
-        socket = new Socket();
-
-        connectServer(new InetSocketAddress(hostname, port));
-
-        packetListeners = new ArrayList<>();
-    }
 
     /**
      * Constructs a new unconnected Client.
      */
     public Client() {
         socket = new Socket();
-
-        packetListeners = new ArrayList<>();
+        listeners = new EventListenerList();
     }
 
     /**
@@ -82,7 +69,7 @@ public class Client {
      * @return true if the client's {@code Socket} is both connected to an address and is not closed
      */
     public boolean isConnected() {
-        return socket.isConnected() && !socket.isClosed();
+        return socket.isConnected() && !socket.isClosed() && socket.isBound();
     }
 
     /**
@@ -90,11 +77,11 @@ public class Client {
      * @param listener the packet listener to register to the client
      */
     public void addPacketListener(PacketListener listener) {
-        packetListeners.add(listener);
+        listeners.add(PacketListener.class, listener);
     }
 
     private void fireListeners(Packet packet) {
-        for(PacketListener listener : packetListeners) {
+        for(PacketListener listener : listeners.getListeners(PacketListener.class)) {
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
         }
     }
@@ -109,6 +96,7 @@ public class Client {
             throw new RuntimeException("Cannot connect a Client that is already connected to an address");
         } else {
             try {
+                socket.bind(null);
                 socket.connect(address);
                 outputStream = new ObjectOutputStream(socket.getOutputStream());
                 inputStream = new ObjectInputStream(socket.getInputStream());
@@ -126,15 +114,11 @@ public class Client {
      * @throws RuntimeException The client is not connected to any address.
      */
     public void disconnect() throws IOException {
-        if(socket.isConnected()) {
-            listenerThread.cancel();
-            socket.shutdownOutput();
-            socket.shutdownInput();
-            socket.close();
-            socket = new Socket();
-        } else {
-            throw new RuntimeException("Cannot disconnect an unconnected Client");
-        }
+        listenerThread.cancel();
+        socket.shutdownOutput();
+        socket.shutdownInput();
+        socket.close();
+        socket = new Socket();
     }
 
     /**
@@ -149,15 +133,8 @@ public class Client {
     /**
      * Reads a {@code Packet} from the client's input stream.
      */
-    public Object readStream() throws IOException, ClassNotFoundException {
-        try {
-            return inputStream.readObject();
-        } catch(SocketException e) {
-            if(e.getMessage().equals("Socket closed"))
-                return null;
-            else
-                throw new RuntimeException(e);
-        }
+    protected Object readStream() throws IOException, ClassNotFoundException {
+        return inputStream.readObject();
     }
 
     private class ListenerTask extends TimerTask {

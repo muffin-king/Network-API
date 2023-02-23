@@ -22,7 +22,7 @@ public class ConnectedClient {
      * Constructs a new {@code ConnectedClient}.
      * @param socket The socket that the client is connected through
      */
-    ConnectedClient(Socket socket, Server server) {
+    protected ConnectedClient(Socket socket, Server server) {
         this.socket = socket;
         try {
             outputStream = new ObjectOutputStream(socket.getOutputStream());
@@ -69,7 +69,7 @@ public class ConnectedClient {
      * Destroys the client closing its streams and closing the socket.
      * Does not remove the client from a {@code Server}'s list of connected clients.
      */
-    void destroy() throws IOException {
+    protected void destroy() throws IOException {
         thread.cancel();
         outputStream.close();
         inputStream.close();
@@ -77,7 +77,7 @@ public class ConnectedClient {
         isDestroyed = true;
     }
 
-    boolean isDestroyed() {
+    protected boolean isDestroyed() {
         return isDestroyed;
     }
 
@@ -92,12 +92,6 @@ public class ConnectedClient {
             try {
                 server.firePacketListeners((Packet) server.readStream(client));
             } catch (IOException | ClassNotFoundException e) {
-                try {
-                    server.disconnectClient(client);
-                    cancel();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
                 throw new RuntimeException(e);
             }
         }

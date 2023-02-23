@@ -2,6 +2,7 @@ package networkapi.net;
 
 import networkapi.listener.*;
 
+import javax.swing.event.EventListenerList;
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
@@ -13,25 +14,18 @@ import java.util.TimerTask;
  */
 public class Server {
     private final ServerSocket serverSocket;
-    private final ArrayList<PacketListener> packetListeners;
-
-    private final ArrayList<ConnectionListener> connectionListeners;
+    private final EventListenerList listeners;
     private final ArrayList<ConnectedClient> clients;
     private Timer connectThread;
 
     /**
      * Constructs a new {@code Server}.
-     * @param port The port to open the server on
      */
-    public Server(int port) throws IOException {
-        serverSocket = new ServerSocket(port);
+    public Server() throws IOException {
+        serverSocket = new ServerSocket();
 
-        packetListeners = new ArrayList<>();
-        connectionListeners = new ArrayList<>();
+        listeners = new EventListenerList();
         clients = new ArrayList<>();
-
-        connectThread = new Timer();
-        connectThread.schedule(new ConnectionThread(), 0, 1);
     }
 
     /**
@@ -50,25 +44,25 @@ public class Server {
      * @param listener the packet listener to register to the server
      */
     public void addPacketListener(PacketListener listener) {
-        packetListeners.add(listener);
+        listeners.add(PacketListener.class, listener);
     }
 
     public void addConnectionListener(ConnectionListener listener) {
-        connectionListeners.add(listener);
+        listeners.add(ConnectionListener.class, listener);
     }
 
-    void firePacketListeners(Packet packet) {
-        for(PacketListener listener : packetListeners)
+    protected void firePacketListeners(Packet packet) {
+        for(PacketListener listener : listeners.getListeners(PacketListener.class))
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
     }
 
-    void fireConnectionListeners(ConnectedClient client) {
-        for(ConnectionListener listener : connectionListeners)
+    protected void fireConnectionListeners(ConnectedClient client) {
+        for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
             listener.onClientConnection(new ConnectionEvent(client, System.currentTimeMillis()));
     }
 
-    void fireDisconnectionListeners(ConnectedClient client, int reason) {
-        for(ConnectionListener listener : connectionListeners)
+    protected void fireDisconnectionListeners(ConnectedClient client, int reason) {
+        for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
             listener.onClientDisconnection(new DisconnectionEvent(client, System.currentTimeMillis(), reason));
     }
 
@@ -78,13 +72,8 @@ public class Server {
      * @param client The client to send the object to
      */
     public void writeStream(Object out, ConnectedClient client) throws IOException {
-        try {
-            client.getOutputStream().writeObject(out);
-            client.getOutputStream().flush();
-        } catch(IOException e) {
-            disconnectClient(client, DisconnectionEvent.PACKET_SEND_EXCEPTION);
-            throw e;
-        }
+        client.getOutputStream().writeObject(out);
+        client.getOutputStream().flush();
     }
 
     /**
@@ -93,17 +82,8 @@ public class Server {
      * @param client the client whose stream will be read from
      * @return the {@link Packet} read from the stream
      */
-    public Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
-        try {
-            return client.getInputStream().readObject();
-        } catch(IOException | ClassNotFoundException e) {
-            disconnectClient(client, DisconnectionEvent.PACKET_READ_EXCEPTION);
-            if(e.getMessage().equals("Socket closed")) {
-                return null;
-            } else {
-                throw e;
-            }
-        }
+    protected Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
+        return client.getInputStream().readObject();
     }
 
     /**
@@ -155,13 +135,57 @@ public class Server {
     }
 
     /**
+     * Returns if the server is currently capable of accepting connections (is open).
+     * @return true if the server socket is bound and not closed.
+     */
+    public boolean isAccepting() {
+        return serverSocket.isBound() && !serverSocket.isClosed();
+    }
+
+    /**
+     * Opens the server on the specified port.
+     * @throws IOException the server socket throws an IOException while binding
+     */
+    public void open(int port) throws IOException {
+        serverSocket.bind(new InetSocketAddress(port));
+        connectThread = new Timer();
+        connectThread.schedule(new ConnectionThread(), 0, 1);
+    }
+
+    /**
+     * Opens the server, automatically choosing the port.
+     * @throws IOException the server socket throws an IOException while binding
+     */
+    public void open() throws IOException {
+        serverSocket.bind(null);
+        connectThread = new Timer();
+        connectThread.schedule(new ConnectionThread(), 0, 1);
+    }
+
+    /**
      * Shuts down the server.
      * @throws IOException the server socket throws an IOException while closing
      */
-    public void shutDown() throws IOException {
+    public void close() throws IOException {
         connectThread.cancel();
         for(ConnectedClient client : clients)
             disconnectClient(client);
         serverSocket.close();
+    }
+
+    /**
+     * Returns the server's hostname.
+     * @return The server's hostname
+     */
+    public String getHostname() {
+        return serverSocket.getInetAddress().getHostName();
+    }
+
+    /**
+     * Returns the server's port, -1 if the server is closed.
+     * @return The server's port
+     */
+    public int getPort() {
+        return serverSocket.isClosed() ? -1 : serverSocket.getLocalPort();
     }
 }
