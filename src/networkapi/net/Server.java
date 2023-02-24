@@ -11,6 +11,7 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * A Server is a class capable of managing connected {@link Client Clients}, as well as sending and receiving {@link Packet Packets}.
@@ -125,7 +126,8 @@ public class Server {
             try {
                 addClient(serverSocket.accept());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                if(isAccepting)
+                    throw new RuntimeException(e);
             }
         }
     }

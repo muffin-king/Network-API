@@ -27,6 +27,7 @@ public class Client {
 
     /**
      * Constructs a new unconnected Client.
+     * @param debugOutput The {@link PrintStream} for debug messages to be written to, disables debug messages if null
      */
     public Client(PrintStream debugOutput) {
         socket = new Socket();
@@ -159,7 +160,11 @@ public class Client {
             try {
                 firePacketListeners((Packet) readStream());
             } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                try {
+                    disconnect();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         }
     }

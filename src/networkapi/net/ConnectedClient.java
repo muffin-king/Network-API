@@ -6,6 +6,9 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * A {@code ConnectedClient} is a {@code Server}-side representation of a connected socket.
@@ -36,7 +39,7 @@ public class ConnectedClient {
         this.server = server;
 
         thread = new Timer();
-        thread.schedule(new ClientTask(this), 0, 1);
+        thread.schedule(new ClientTask(), 0, 1);
     }
 
     /**
@@ -76,21 +79,17 @@ public class ConnectedClient {
         isDestroyed = true;
     }
 
-    protected boolean isDestroyed() {
-        return isDestroyed;
-    }
-
     private class ClientTask extends TimerTask {
-        private final ConnectedClient client;
-        public ClientTask(ConnectedClient client) {
-            this.client = client;
-        }
         @Override
         public void run() {
             try {
                 server.firePacketListeners((Packet) inputStream.readObject());
             } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
+                try {
+                    server.disconnectClient(ConnectedClient.this);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         }
     }
