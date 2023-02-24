@@ -40,36 +40,35 @@ public class ConnectedClient {
     }
 
     /**
-     * Returns the client's associated socket.
-     * @return The client's {@link Socket}
+     * Returns the hostname the client is connected from.
+     * @return The client's hostname
      */
-    public Socket getSocket() {
+    public String getHostname() {
+        return socket.getInetAddress().getHostName();
+    }
+
+    /**
+     * Returns the port the client is connected from.
+     * @return The client's port
+     */
+    public int getPort() {
+        return socket.getPort();
+    }
+
+    protected Socket getSocket() {
         return socket;
     }
 
-    /**
-     * Returns the object output stream created for the socket
-     * Should not be necessary outside of {@code Server}; use {@code Server.writeStream} to send packets.
-     * @return An {@link ObjectOutputStream} associated with the socket
-     */
-    public ObjectOutputStream getOutputStream() {
+    protected ObjectOutputStream getOutputStream() {
         return outputStream;
     }
 
-    /**
-     * Returns the object input stream created for the socket
-     * Should not be necessary outside of {@code Server}.
-     * @return An {@link ObjectInputStream} associated with the socket
-     */
-    public ObjectInputStream getInputStream() {
+    protected ObjectInputStream getInputStream() {
         return inputStream;
     }
 
-    /**
-     * Destroys the client closing its streams and closing the socket.
-     * Does not remove the client from a {@code Server}'s list of connected clients.
-     */
     protected void destroy() throws IOException {
+        server.getClients().remove(this);
         thread.cancel();
         outputStream.close();
         inputStream.close();
@@ -86,14 +85,17 @@ public class ConnectedClient {
         public ClientTask(ConnectedClient client) {
             this.client = client;
         }
-
         @Override
         public void run() {
             try {
-                server.firePacketListeners((Packet) server.readStream(client));
+                server.firePacketListeners((Packet) inputStream.readObject());
             } catch (IOException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public String toString() {
+        return "ConnectedClient["+socket.getInetAddress().getHostName()+":"+socket.getPort()+"]";
     }
 }

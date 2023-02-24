@@ -3,7 +3,10 @@ package networkapi.net;
 import networkapi.listener.*;
 
 import javax.swing.event.EventListenerList;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Timer;
@@ -13,30 +16,43 @@ import java.util.TimerTask;
  * A Server is a class capable of managing connected {@link Client Clients}, as well as sending and receiving {@link Packet Packets}.
  */
 public class Server {
-    private final ServerSocket serverSocket;
+    private ServerSocket serverSocket;
     private final EventListenerList listeners;
-    private final ArrayList<ConnectedClient> clients;
+    private ArrayList<ConnectedClient> clients;
     private Timer connectThread;
+    private PrintStream debugOutput;
+    private boolean isAccepting;
 
     /**
      * Constructs a new {@code Server}.
+     * @param debugOutput The {@link PrintStream} for debug messages to be written to, disables debug messages if null
      */
-    public Server() throws IOException {
+    public Server(PrintStream debugOutput) throws IOException {
+        this.debugOutput = debugOutput;
+
         serverSocket = new ServerSocket();
 
         listeners = new EventListenerList();
         clients = new ArrayList<>();
+
+        isAccepting = false;
+
+        debugMessage("Unbound server instantiated successfully");
     }
 
     /**
      * Returns an array of all connected clients.
      * @return an array of {@link ConnectedClient ConnectedClients}
      */
-    public ConnectedClient[] getClients() {
+    public ConnectedClient[] getClientArray() {
         ConnectedClient[] ccArray = new ConnectedClient[clients.size()];
         for(int i = 0; i < ccArray.length; i++)
             ccArray[i] = clients.get(i);
         return ccArray;
+    }
+
+    protected ArrayList<ConnectedClient> getClients() {
+        return clients;
     }
 
     /**
@@ -45,10 +61,12 @@ public class Server {
      */
     public void addPacketListener(PacketListener listener) {
         listeners.add(PacketListener.class, listener);
+        debugMessage("Registered packet listener "+listener.getClass().getName());
     }
 
     public void addConnectionListener(ConnectionListener listener) {
         listeners.add(ConnectionListener.class, listener);
+        debugMessage("Registered connection listener "+listener.getClass().getName());
     }
 
     protected void firePacketListeners(Packet packet) {
@@ -116,12 +134,13 @@ public class Server {
         ConnectedClient client = new ConnectedClient(socket, this);
         clients.add(client);
         fireConnectionListeners(client);
+        debugMessage(client+" connected to server");
     }
 
     private void disconnectClient(ConnectedClient client, int reason) throws IOException {
-        clients.remove(client);
         client.destroy();
         fireDisconnectionListeners(client, reason);
+        debugMessage(client+" disconnected from server");
     }
 
     /**
@@ -129,17 +148,17 @@ public class Server {
      * @param client The {@link ConnectedClient} to disconnect.
      */
     public void disconnectClient(ConnectedClient client) throws IOException {
-        clients.remove(client);
         client.destroy();
         fireDisconnectionListeners(client, DisconnectionEvent.SERVER_DISCONNECTION);
+        debugMessage(client+" disconnected from server");
     }
 
     /**
      * Returns if the server is currently capable of accepting connections (is open).
-     * @return true if the server socket is bound and not closed.
+     * @return true if the server is open
      */
     public boolean isAccepting() {
-        return serverSocket.isBound() && !serverSocket.isClosed();
+        return isAccepting;
     }
 
     /**
@@ -147,9 +166,13 @@ public class Server {
      * @throws IOException the server socket throws an IOException while binding
      */
     public void open(int port) throws IOException {
-        serverSocket.bind(new InetSocketAddress(port));
+        debugMessage("Opening server...");
+        InetSocketAddress address = new InetSocketAddress(port);
+        serverSocket.bind(address);
         connectThread = new Timer();
         connectThread.schedule(new ConnectionThread(), 0, 1);
+        isAccepting = true;
+        debugMessage("Server opened, bound to "+address.getHostName()+":"+address.getPort());
     }
 
     /**
@@ -157,9 +180,12 @@ public class Server {
      * @throws IOException the server socket throws an IOException while binding
      */
     public void open() throws IOException {
-        serverSocket.bind(null);
+        InetSocketAddress address = new InetSocketAddress(0);
+        serverSocket.bind(address);
         connectThread = new Timer();
         connectThread.schedule(new ConnectionThread(), 0, 1);
+        isAccepting = true;
+        debugMessage("Server opened, bound to "+address.getHostName()+":"+address.getPort());
     }
 
     /**
@@ -167,10 +193,13 @@ public class Server {
      * @throws IOException the server socket throws an IOException while closing
      */
     public void close() throws IOException {
+        debugMessage("Server closing...");
         connectThread.cancel();
-        for(ConnectedClient client : clients)
-            disconnectClient(client);
+        clients = new ArrayList<>();
         serverSocket.close();
+        serverSocket = new ServerSocket();
+        isAccepting = false;
+        debugMessage("Server closed");
     }
 
     /**
@@ -186,6 +215,20 @@ public class Server {
      * @return The server's port
      */
     public int getPort() {
-        return serverSocket.isClosed() ? -1 : serverSocket.getLocalPort();
+        return isAccepting ? -1 : serverSocket.getLocalPort();
+    }
+
+    /**
+     * Sets the output stream for debug messages.
+     * @param debugOutput The {@link PrintStream} for debug messages to be written to, disables debug messages if null
+     */
+    public void setDebugOutput(PrintStream debugOutput) {
+        this.debugOutput = debugOutput;
+        debugMessage("Debug output set to "+debugOutput);
+    }
+
+    private void debugMessage(String message) {
+        if(debugOutput != null)
+            debugOutput.println(message);
     }
 }

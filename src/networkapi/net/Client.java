@@ -7,10 +7,9 @@ import javax.swing.event.EventListenerList;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.EventListener;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -23,13 +22,17 @@ public class Client {
     private ObjectOutputStream outputStream;
     private ObjectInputStream inputStream;
     private Timer listenerThread;
+    private PrintStream debugOutput;
+    private boolean isConnected;
 
     /**
      * Constructs a new unconnected Client.
      */
-    public Client() {
+    public Client(PrintStream debugOutput) {
         socket = new Socket();
         listeners = new EventListenerList();
+        this.debugOutput = debugOutput;
+        isConnected = false;
     }
 
     /**
@@ -49,27 +52,27 @@ public class Client {
     }
 
     /**
-     * Returns the hostname the client is connected to.
+     * Returns the hostname the client is connected to, {@code null} if unconnected.
      * @return The hostname the client is connected to
      */
     public String getConnectedHostname() {
-        return socket.getInetAddress().getHostName();
+        return isConnected ? socket.getInetAddress().getHostName() : null;
     }
 
     /**
-     * Returns the port the client is connected to.
+     * Returns the port the client is connected to, -1 if unconnected.
      * @return The port the client is connected to
      */
     public int getConnectedPort() {
-        return socket.getPort();
+        return isConnected ? socket.getPort() : -1;
     }
 
     /**
      * Returns the state of the client's connection
-     * @return true if the client's {@code Socket} is both connected to an address and is not closed
+     * @return true if the client is connected to an address
      */
     public boolean isConnected() {
-        return socket.isConnected() && !socket.isClosed() && socket.isBound();
+        return isConnected;
     }
 
     /**
@@ -78,9 +81,10 @@ public class Client {
      */
     public void addPacketListener(PacketListener listener) {
         listeners.add(PacketListener.class, listener);
+        debugMessage("Registered packet listener "+listener.getClass().getName());
     }
 
-    private void fireListeners(Packet packet) {
+    private void firePacketListeners(Packet packet) {
         for(PacketListener listener : listeners.getListeners(PacketListener.class)) {
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
         }
@@ -92,7 +96,8 @@ public class Client {
      * @throws RuntimeException The client is already connected to an address.
      */
     public void connectServer(InetSocketAddress address) {
-        if(socket.isConnected()) {
+        debugMessage("Connecting to server...");
+        if(isConnected) {
             throw new RuntimeException("Cannot connect a Client that is already connected to an address");
         } else {
             try {
@@ -103,10 +108,14 @@ public class Client {
 
                 listenerThread = new Timer();
                 listenerThread.schedule(new ListenerTask(), 0, 1);
+
+                isConnected = true;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
+
+        debugMessage("Connected to Server["+address.getHostName()+":"+address.getPort()+"]");
     }
 
     /**
@@ -114,11 +123,18 @@ public class Client {
      * @throws RuntimeException The client is not connected to any address.
      */
     public void disconnect() throws IOException {
-        listenerThread.cancel();
-        socket.shutdownOutput();
-        socket.shutdownInput();
-        socket.close();
-        socket = new Socket();
+        debugMessage("Disconnecting client...");
+        if(isConnected) {
+            isConnected = false;
+            listenerThread.cancel();
+            socket.shutdownOutput();
+            socket.shutdownInput();
+            socket.close();
+            socket = new Socket();
+        } else {
+            throw new RuntimeException("Cannot disconnect an unconnected client");
+        }
+        debugMessage("Client disconnected");
     }
 
     /**
@@ -141,10 +157,23 @@ public class Client {
         @Override
         public void run() {
             try {
-                fireListeners((Packet) readStream());
+                firePacketListeners((Packet) readStream());
             } catch (IOException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    /**
+     * Sets the output stream for debug messages.
+     * @param debugOutput The {@link PrintStream} for debug messages to be written to
+     */
+    public void setDebugOutput(PrintStream debugOutput) {
+        this.debugOutput = debugOutput;
+        debugMessage("Debug output set to "+debugOutput);
+    }
+
+    private void debugMessage(String message) {
+        debugOutput.println(message);
     }
 }
