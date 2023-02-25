@@ -179,6 +179,7 @@ public class Client {
     }
 
     private void debugMessage(String message) {
-        debugOutput.println(message);
+        if(debugOutput != null)
+            debugOutput.println(message);
     }
 }
