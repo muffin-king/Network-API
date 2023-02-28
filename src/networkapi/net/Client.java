@@ -8,13 +8,14 @@ import javax.swing.event.EventListenerList;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Timer;
 import java.util.TimerTask;
 
 /**
  * A Client is a class capable of connecting to {@link Server Servers}, as well as sending and receiving {@link Packet Packets}.
  */
-public class Client implements Networkable {
+public class Client extends Networkable {
     private Socket socket;
     private final EventListenerList listeners;
     private ObjectOutputStream outputStream;
@@ -35,6 +36,7 @@ public class Client implements Networkable {
         this.debugOutput = debugOutput;
         isConnected = false;
         disconnectionPacket = new DisconnectionPacket(this);
+        debugMessage("Unbound Client instantiated successfully");
     }
 
     /**
@@ -102,12 +104,12 @@ public class Client implements Networkable {
     }
     protected void fireConnectionListeners() {
         for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
-            listener.onClientConnection(new ConnectionEvent(getConnectedHostname(), getPort(), System.currentTimeMillis()));
+            listener.onClientConnection(new ConnectionEvent(new ConnectedServer(this), System.currentTimeMillis()));
     }
 
     protected void fireDisconnectionListeners(int reason) {
         for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
-            listener.onClientDisconnection(new DisconnectionEvent(getConnectedHostname(), getConnectedPort(), System.currentTimeMillis(), reason));
+            listener.onClientDisconnection(new DisconnectionEvent(new ConnectedServer(this), System.currentTimeMillis(), reason));
     }
 
     /**
@@ -121,8 +123,12 @@ public class Client implements Networkable {
             throw new RuntimeException("Cannot connect a Client that is already connected to an address");
         } else {
             try {
-                socket.bind(null);
-                socket.connect(address);
+                try {
+                    socket.connect(address);
+                } catch(UnknownHostException e) {
+                    debugMessage("Unknown host "+address);
+                    return;
+                }
                 outputStream = new ObjectOutputStream(socket.getOutputStream());
                 inputStream = new ObjectInputStream(socket.getInputStream());
 
@@ -130,12 +136,13 @@ public class Client implements Networkable {
                 listenerThread.schedule(new ListenerTask(), 0, 1);
 
                 isConnected = true;
+
+                fireConnectionListeners();
+                debugMessage("Connected to Server["+address.getHostName()+":"+address.getPort()+"]");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-
-        debugMessage("Connected to Server["+address.getHostName()+":"+address.getPort()+"]");
     }
 
     /**
@@ -152,10 +159,11 @@ public class Client implements Networkable {
             socket.shutdownInput();
             socket.close();
             socket = new Socket();
+            fireDisconnectionListeners(DisconnectionEvent.CLIENT_DISCONNECTION);
+            debugMessage("Client disconnected");
         } else {
             throw new RuntimeException("Cannot disconnect an unconnected client");
         }
-        debugMessage("Client disconnected");
     }
 
     /**

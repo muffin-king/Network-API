@@ -14,7 +14,7 @@ import java.util.TimerTask;
 /**
  * A {@code ConnectedClient} is a {@code Server}-side representation of a connected socket.
  */
-public class ConnectedClient implements Networkable {
+public class ConnectedClient extends Networkable {
     private final Socket socket;
     private final ObjectOutputStream outputStream;
     private final ObjectInputStream inputStream;

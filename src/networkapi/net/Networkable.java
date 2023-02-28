@@ -1,8 +1,6 @@
 package networkapi.net;
 
-import java.io.Serializable;
-
-public interface Networkable {
-    String getHostname();
-    int getPort();
+public abstract class Networkable {
+    public abstract String getHostname();
+    public abstract int getPort();
 }

@@ -13,12 +13,6 @@ public class ConnectionEvent {
         this.timeConnected = timeConnected;
     }
 
-    public ConnectionEvent(String hostname, int port, long timeConnected) {
-        this.hostname = hostname;
-        this.port = port;
-        this.timeConnected = timeConnected;
-    }
-
     /**
      * Returns the hostname of the {@code Networkable} connected.
      * @return the {@code Networkable}'s hostname

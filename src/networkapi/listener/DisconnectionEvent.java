@@ -19,13 +19,6 @@ public class DisconnectionEvent {
         this.reason = reason;
     }
 
-    public DisconnectionEvent(String hostname, int port, long timeDisconnected, int reason) {
-        this.hostname = hostname;
-        this.port = port;
-        this.timeDisconnected = timeDisconnected;
-        this.reason = reason;
-    }
-
     /**
      * Returns the hostname of the {@code Networkable} connected.
      * @return the {@code Networkable}'s hostname

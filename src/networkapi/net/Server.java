@@ -14,10 +14,10 @@ import java.util.TimerTask;
 /**
  * A Server is a class capable of managing connected {@link Client Clients}, as well as sending and receiving {@link Packet Packets}.
  */
-public class Server implements Networkable {
+public class Server extends Networkable {
     private ServerSocket serverSocket;
     private final EventListenerList listeners;
-    private ArrayList<ConnectedClient> clients;
+    private final ArrayList<ConnectedClient> clients;
     private Timer connectThread;
     private PrintStream debugOutput;
     private boolean isAccepting;
