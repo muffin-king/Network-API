@@ -1,13 +1,11 @@
 package networkapi.net;
 
-import networkapi.listener.PacketEvent;
-import networkapi.listener.PacketListener;
+import networkapi.listener.*;
+import networkapi.net.packet.DisconnectionPacket;
+import networkapi.net.packet.Packet;
 
 import javax.swing.event.EventListenerList;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Timer;
@@ -16,7 +14,7 @@ import java.util.TimerTask;
 /**
  * A Client is a class capable of connecting to {@link Server Servers}, as well as sending and receiving {@link Packet Packets}.
  */
-public class Client {
+public class Client implements Networkable {
     private Socket socket;
     private final EventListenerList listeners;
     private ObjectOutputStream outputStream;
@@ -24,6 +22,8 @@ public class Client {
     private Timer listenerThread;
     private PrintStream debugOutput;
     private boolean isConnected;
+
+    private final DisconnectionPacket disconnectionPacket;
 
     /**
      * Constructs a new unconnected Client.
@@ -34,6 +34,7 @@ public class Client {
         listeners = new EventListenerList();
         this.debugOutput = debugOutput;
         isConnected = false;
+        disconnectionPacket = new DisconnectionPacket(this);
     }
 
     /**
@@ -85,10 +86,28 @@ public class Client {
         debugMessage("Registered packet listener "+listener.getClass().getName());
     }
 
+    /**
+     * Registers a connection listener implementing {@link ConnectionListener}.
+     * @param listener the connection listener to register to the server
+     */
+    public void addConnectionListener(ConnectionListener listener) {
+        listeners.add(ConnectionListener.class, listener);
+        debugMessage("Registered connection listener "+listener.getClass().getName());
+    }
+
     private void firePacketListeners(Packet packet) {
         for(PacketListener listener : listeners.getListeners(PacketListener.class)) {
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
         }
+    }
+    protected void fireConnectionListeners() {
+        for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
+            listener.onClientConnection(new ConnectionEvent(getConnectedHostname(), getPort(), System.currentTimeMillis()));
+    }
+
+    protected void fireDisconnectionListeners(int reason) {
+        for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
+            listener.onClientDisconnection(new DisconnectionEvent(getConnectedHostname(), getConnectedPort(), System.currentTimeMillis(), reason));
     }
 
     /**
@@ -127,6 +146,7 @@ public class Client {
         debugMessage("Disconnecting client...");
         if(isConnected) {
             isConnected = false;
+            writeStream(disconnectionPacket);
             listenerThread.cancel();
             socket.shutdownOutput();
             socket.shutdownInput();
@@ -142,29 +162,40 @@ public class Client {
      * Writes a {@code Packet} to the client's output stream.
      * @param out the packet to be written to the stream
      */
-    public void writeStream(Object out) throws IOException {
+    public void writeStream(Packet out) throws IOException {
         outputStream.writeObject(out);
+        outputStream.flush();
+    }
+
+    /**
+     * Writes a {@code Packet} to the client's output stream.
+     * @param ID the ID of the packet
+     * @param data the {@code Serializable} object to be contained by the packet
+     */
+    public void writeStream(int ID, Serializable data) throws IOException {
+        outputStream.writeObject(new Packet(ID, data, this));
         outputStream.flush();
     }
 
     /**
      * Reads a {@code Packet} from the client's input stream.
      */
-    protected Object readStream() throws IOException, ClassNotFoundException {
-        return inputStream.readObject();
+    protected Packet readStream() throws IOException, ClassNotFoundException {
+        return (Packet) inputStream.readObject();
     }
 
     private class ListenerTask extends TimerTask {
         @Override
         public void run() {
             try {
-                firePacketListeners((Packet) readStream());
-            } catch (IOException | ClassNotFoundException e) {
-                try {
+                Packet packet = readStream();
+                if(packet instanceof DisconnectionPacket)
                     disconnect();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+                else
+                    firePacketListeners(packet);
+            } catch (IOException | ClassNotFoundException e) {
+                if(isConnected)
+                    throw new RuntimeException(e);
             }
         }
     }

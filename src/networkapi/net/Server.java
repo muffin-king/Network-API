@@ -1,28 +1,27 @@
 package networkapi.net;
 
 import networkapi.listener.*;
+import networkapi.net.packet.DisconnectionPacket;
+import networkapi.net.packet.Packet;
 
 import javax.swing.event.EventListenerList;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * A Server is a class capable of managing connected {@link Client Clients}, as well as sending and receiving {@link Packet Packets}.
  */
-public class Server {
+public class Server implements Networkable {
     private ServerSocket serverSocket;
     private final EventListenerList listeners;
     private ArrayList<ConnectedClient> clients;
     private Timer connectThread;
     private PrintStream debugOutput;
     private boolean isAccepting;
+    private final DisconnectionPacket disconnectionPacket;
 
     /**
      * Constructs a new {@code Server}.
@@ -37,6 +36,8 @@ public class Server {
         clients = new ArrayList<>();
 
         isAccepting = false;
+
+        disconnectionPacket = new DisconnectionPacket(this);
 
         debugMessage("Unbound server instantiated successfully");
     }
@@ -65,6 +66,10 @@ public class Server {
         debugMessage("Registered packet listener "+listener.getClass().getName());
     }
 
+    /**
+     * Registers a connection listener implementing {@link ConnectionListener}.
+     * @param listener the connection listener to register to the server
+     */
     public void addConnectionListener(ConnectionListener listener) {
         listeners.add(ConnectionListener.class, listener);
         debugMessage("Registered connection listener "+listener.getClass().getName());
@@ -90,8 +95,19 @@ public class Server {
      * @param out the {@link Packet} to be written to the stream
      * @param client The client to send the object to
      */
-    public void writeStream(Object out, ConnectedClient client) throws IOException {
+    public void writeStream(Packet out, ConnectedClient client) throws IOException {
         client.getOutputStream().writeObject(out);
+        client.getOutputStream().flush();
+    }
+
+    /**
+     * Writes a packet to a client's output stream.
+     * @param ID the ID of the packet
+     * @param data the {@code Serializable} object to be contained by the packet
+     * @param client The client to send the object to
+     */
+    public void writeStream(int ID, Serializable data, ConnectedClient client) throws IOException {
+        client.getOutputStream().writeObject(new Packet(ID, data, client));
         client.getOutputStream().flush();
     }
 
@@ -101,8 +117,8 @@ public class Server {
      * @param client the client whose stream will be read from
      * @return the {@link Packet} read from the stream
      */
-    protected Object readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
-        return client.getInputStream().readObject();
+    protected Packet readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
+        return (Packet) client.getInputStream().readObject();
     }
 
     /**
@@ -139,9 +155,18 @@ public class Server {
         debugMessage(client+" connected to server");
     }
 
-    private void disconnectClient(ConnectedClient client, int reason) throws IOException {
+    protected void disconnectClient(ConnectedClient client, int reason) throws IOException {
+        writeStream(disconnectionPacket, client);
+        clients.remove(client);
         client.destroy();
         fireDisconnectionListeners(client, reason);
+        debugMessage(client+" disconnected from server");
+    }
+
+    protected void removeDisconnectedClient(ConnectedClient client) throws IOException {
+        clients.remove(client);
+        client.destroy();
+        fireDisconnectionListeners(client, DisconnectionEvent.SERVER_DISCONNECTION);
         debugMessage(client+" disconnected from server");
     }
 
@@ -150,6 +175,8 @@ public class Server {
      * @param client The {@link ConnectedClient} to disconnect.
      */
     public void disconnectClient(ConnectedClient client) throws IOException {
+        writeStream(disconnectionPacket, client);
+        clients.remove(client);
         client.destroy();
         fireDisconnectionListeners(client, DisconnectionEvent.SERVER_DISCONNECTION);
         debugMessage(client+" disconnected from server");
@@ -197,7 +224,9 @@ public class Server {
     public void close() throws IOException {
         debugMessage("Server closing...");
         connectThread.cancel();
-        clients = new ArrayList<>();
+        for(int i = 0; i < clients.size(); i++) {
+            disconnectClient(clients.get(i), DisconnectionEvent.SERVER_DISCONNECTION);
+        }
         serverSocket.close();
         serverSocket = new ServerSocket();
         isAccepting = false;
@@ -206,10 +235,10 @@ public class Server {
 
     /**
      * Returns the server's hostname.
-     * @return The server's hostname
+     * @return The server's hostname, null if unbound
      */
     public String getHostname() {
-        return serverSocket.getInetAddress().getHostName();
+        return !isAccepting ? null : serverSocket.getInetAddress().getHostName();
     }
 
     /**
@@ -217,7 +246,7 @@ public class Server {
      * @return The server's port
      */
     public int getPort() {
-        return isAccepting ? -1 : serverSocket.getLocalPort();
+        return !isAccepting ? -1 : serverSocket.getLocalPort();
     }
 
     /**

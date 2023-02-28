@@ -1,25 +1,26 @@
 package networkapi.net;
 
+import networkapi.net.packet.DisconnectionPacket;
+import networkapi.net.packet.Packet;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * A {@code ConnectedClient} is a {@code Server}-side representation of a connected socket.
  */
-public class ConnectedClient {
+public class ConnectedClient implements Networkable {
     private final Socket socket;
     private final ObjectOutputStream outputStream;
     private final ObjectInputStream inputStream;
-    private boolean isDestroyed;
     private final Timer thread;
     private final Server server;
+    private boolean isConnected;
 
     /**
      * Constructs a new {@code ConnectedClient}.
@@ -34,9 +35,9 @@ public class ConnectedClient {
             throw new RuntimeException(e);
         }
 
-        isDestroyed = false;
-
         this.server = server;
+
+        isConnected = true;
 
         thread = new Timer();
         thread.schedule(new ClientTask(), 0, 1);
@@ -70,26 +71,30 @@ public class ConnectedClient {
         return inputStream;
     }
 
+    public boolean isConnected() {
+        return isConnected;
+    }
+
     protected void destroy() throws IOException {
-        server.getClients().remove(this);
+        isConnected = false;
         thread.cancel();
         outputStream.close();
         inputStream.close();
         socket.close();
-        isDestroyed = true;
     }
 
     private class ClientTask extends TimerTask {
         @Override
         public void run() {
             try {
-                server.firePacketListeners((Packet) inputStream.readObject());
+                Packet packet = server.readStream(ConnectedClient.this);
+                if(packet instanceof DisconnectionPacket)
+                    server.removeDisconnectedClient(ConnectedClient.this);
+                else
+                    server.firePacketListeners(packet);
             } catch (IOException | ClassNotFoundException e) {
-                try {
-                    server.disconnectClient(ConnectedClient.this);
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+                if(isConnected)
+                    throw new RuntimeException(e);
             }
         }
     }

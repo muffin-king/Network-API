@@ -1,27 +1,38 @@
 package networkapi.listener;
 
-import networkapi.net.ConnectedClient;
+import networkapi.net.Networkable;
 
 public class ConnectionEvent {
-    private final ConnectedClient client;
+    private final String hostname;
+    private final int port;
     private final long timeConnected;
 
-    /**
-     * Constructs a new {@code ConnectionEvent}.
-     * @param client the client that the {@code ConnectionEvent} will contain
-     * @param timeConnected the time the client connected
-     */
-    public ConnectionEvent(ConnectedClient client, long timeConnected) {
-        this.client = client;
+    public ConnectionEvent(Networkable target, long timeConnected) {
+        this.hostname = target.getHostname();
+        this.port = target.getPort();
+        this.timeConnected = timeConnected;
+    }
+
+    public ConnectionEvent(String hostname, int port, long timeConnected) {
+        this.hostname = hostname;
+        this.port = port;
         this.timeConnected = timeConnected;
     }
 
     /**
-     * Returns the client contained by the {@code ConnectionEvent}
-     * @return the client the {@code ConnectionEvent} contains
+     * Returns the hostname of the {@code Networkable} connected.
+     * @return the {@code Networkable}'s hostname
      */
-    public ConnectedClient getClient() {
-        return client;
+    public String getHostname() {
+        return hostname;
+    }
+
+    /**
+     * Returns the port of the {@code Networkable} connected.
+     * @return the {@code Networkable}'s port
+     */
+    public int getPort() {
+        return port;
     }
 
     /**

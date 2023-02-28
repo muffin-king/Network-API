@@ -1,32 +1,45 @@
 package networkapi.listener;
 
-import networkapi.net.ConnectedClient;
+import networkapi.net.Networkable;
 
 public class DisconnectionEvent {
-    private final ConnectedClient client;
+    private final String hostname;
+    private final int port;
     private final long timeDisconnected;
     private final int reason;
     public static final int SERVER_DISCONNECTION = 0;
-    public static final int PACKET_SEND_EXCEPTION = 1;
-    public static final int PACKET_READ_EXCEPTION = 2;
+    public static final int CLIENT_DISCONNECTION = 1;
+    public static final int PACKET_SEND_EXCEPTION = 2;
+    public static final int PACKET_READ_EXCEPTION = 3;
 
-    /**
-     * Constructs a new {@code DisconnectionEvent}.
-     * @param client the client that the {@code DisconnectionEvent} will contain
-     * @param timeDisconnected the time the client disconnected
-     */
-    public DisconnectionEvent(ConnectedClient client, long timeDisconnected, int reason) {
-        this.client = client;
+    public DisconnectionEvent(Networkable target, long timeDisconnected, int reason) {
+        this.hostname = target.getHostname();
+        this.port = target.getPort();
+        this.timeDisconnected = timeDisconnected;
+        this.reason = reason;
+    }
+
+    public DisconnectionEvent(String hostname, int port, long timeDisconnected, int reason) {
+        this.hostname = hostname;
+        this.port = port;
         this.timeDisconnected = timeDisconnected;
         this.reason = reason;
     }
 
     /**
-     * Returns the client contained by the {@code ConnectionEvent}
-     * @return the client the {@code ConnectionEvent} contains
+     * Returns the hostname of the {@code Networkable} connected.
+     * @return the {@code Networkable}'s hostname
      */
-    public ConnectedClient getClient() {
-        return client;
+    public String getHostname() {
+        return hostname;
+    }
+
+    /**
+     * Returns the port of the {@code Networkable} connected.
+     * @return the {@code Networkable}'s port
+     */
+    public int getPort() {
+        return port;
     }
 
     /**
