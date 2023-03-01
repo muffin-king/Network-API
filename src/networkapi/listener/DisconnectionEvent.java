@@ -2,6 +2,9 @@ package networkapi.listener;
 
 import networkapi.net.Networkable;
 
+/**
+ * {@code DisconnectionEvent} represents when a {@code Networkable} has disconnected from a {@code Client} or {@code Server}.
+ */
 public class DisconnectionEvent {
     private final String hostname;
     private final int port;
@@ -9,8 +12,6 @@ public class DisconnectionEvent {
     private final int reason;
     public static final int SERVER_DISCONNECTION = 0;
     public static final int CLIENT_DISCONNECTION = 1;
-    public static final int PACKET_SEND_EXCEPTION = 2;
-    public static final int PACKET_READ_EXCEPTION = 3;
 
     public DisconnectionEvent(Networkable target, long timeDisconnected, int reason) {
         this.hostname = target.getHostname();
@@ -36,16 +37,16 @@ public class DisconnectionEvent {
     }
 
     /**
-     * Returns the time the client connected
-     * @return the time that the client connected
+     * Returns the time the {@code Networkable} connected
+     * @return the time that the {@code Networkable} connected
      */
     public long getTimeDisconnected() {
         return timeDisconnected;
     }
 
     /**
-     * Returns the reason the client was disconnected
-     * @return the reason for client disconnection
+     * Returns the reason the {@code Networkable} was disconnected
+     * @return the reason for {@code Networkable} disconnection
      */
     public int getReason() {
         return reason;

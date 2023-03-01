@@ -2,6 +2,9 @@ package networkapi.listener;
 
 import networkapi.net.Networkable;
 
+/**
+ * {@code ConnectionEvent} represents when a {@code Networkable} has connected to a {@code Client} or {@code Server}.
+ */
 public class ConnectionEvent {
     private final String hostname;
     private final int port;
@@ -30,8 +33,8 @@ public class ConnectionEvent {
     }
 
     /**
-     * Returns the time the client connected
-     * @return the time that the client connected
+     * Returns the time the {@code Networkable} connected
+     * @return the time that the {@code Networkable} connected
      */
     public long getTimeConnected() {
         return timeConnected;

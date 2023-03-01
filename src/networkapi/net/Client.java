@@ -102,12 +102,12 @@ public class Client extends Networkable {
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
         }
     }
-    protected void fireConnectionListeners() {
+    private void fireConnectionListeners() {
         for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
             listener.onClientConnection(new ConnectionEvent(new ConnectedServer(this), System.currentTimeMillis()));
     }
 
-    protected void fireDisconnectionListeners(int reason) {
+    private void fireDisconnectionListeners(int reason) {
         for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
             listener.onClientDisconnection(new DisconnectionEvent(new ConnectedServer(this), System.currentTimeMillis(), reason));
     }
@@ -167,7 +167,7 @@ public class Client extends Networkable {
     }
 
     /**
-     * Writes a {@code Packet} to the client's output stream.
+     * Writes a {@link Packet} to the client's output stream.
      * @param out the packet to be written to the stream
      */
     public void writeStream(Packet out) throws IOException {
@@ -176,9 +176,9 @@ public class Client extends Networkable {
     }
 
     /**
-     * Writes a {@code Packet} to the client's output stream.
+     * Writes a {@link Packet} to the client's output stream.
      * @param ID the ID of the packet
-     * @param data the {@code Serializable} object to be contained by the packet
+     * @param data the {@link Serializable} object to be contained by the packet
      */
     public void writeStream(int ID, Serializable data) throws IOException {
         outputStream.writeObject(new Packet(ID, data, this));
@@ -186,7 +186,7 @@ public class Client extends Networkable {
     }
 
     /**
-     * Reads a {@code Packet} from the client's input stream.
+     * Reads a {@link Packet} from the client's input stream.
      */
     protected Packet readStream() throws IOException, ClassNotFoundException {
         return (Packet) inputStream.readObject();

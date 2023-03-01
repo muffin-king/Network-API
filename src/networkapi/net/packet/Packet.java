@@ -38,7 +38,7 @@ public class Packet implements Serializable, Cloneable {
     }
 
     /**
-     * Returns the object contained by the packet
+     * Returns the object contained by the packet.
      * @return the object the packet contains
      */
     public Object getData() {
@@ -54,7 +54,7 @@ public class Packet implements Serializable, Cloneable {
     }
 
     /**
-     * Returns whether the packet came from the specified client.
+     * Returns whether the packet came from the specified source.
      * @param source The {@code Networkable} object to check
      * @return true if the packet came from the specified source, false otherwise
      */

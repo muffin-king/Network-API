@@ -53,10 +53,6 @@ public class Server extends Networkable {
         return ccArray;
     }
 
-    protected ArrayList<ConnectedClient> getClients() {
-        return clients;
-    }
-
     /**
      * Registers a packet listener implementing {@link PacketListener}.
      * @param listener the packet listener to register to the server
@@ -75,17 +71,17 @@ public class Server extends Networkable {
         debugMessage("Registered connection listener "+listener.getClass().getName());
     }
 
-    protected void firePacketListeners(Packet packet) {
+    void firePacketListeners(Packet packet) {
         for(PacketListener listener : listeners.getListeners(PacketListener.class))
             listener.onPacketReceive(new PacketEvent(packet, System.currentTimeMillis()));
     }
 
-    protected void fireConnectionListeners(ConnectedClient client) {
+    private void fireConnectionListeners(ConnectedClient client) {
         for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
             listener.onClientConnection(new ConnectionEvent(client, System.currentTimeMillis()));
     }
 
-    protected void fireDisconnectionListeners(ConnectedClient client, int reason) {
+    private void fireDisconnectionListeners(ConnectedClient client, int reason) {
         for(ConnectionListener listener : listeners.getListeners(ConnectionListener.class))
             listener.onClientDisconnection(new DisconnectionEvent(client, System.currentTimeMillis(), reason));
     }
@@ -111,12 +107,6 @@ public class Server extends Networkable {
         client.getOutputStream().flush();
     }
 
-    /**
-     * Reads a packet from a client's input stream.
-     * Blocks the current thread until a packet is received.
-     * @param client the client whose stream will be read from
-     * @return the {@link Packet} read from the stream
-     */
     protected Packet readStream(ConnectedClient client) throws IOException, ClassNotFoundException {
         return (Packet) client.getInputStream().readObject();
     }
@@ -155,7 +145,7 @@ public class Server extends Networkable {
         debugMessage(client+" connected to server");
     }
 
-    protected void disconnectClient(ConnectedClient client, int reason) throws IOException {
+    private void disconnectClient(ConnectedClient client, int reason) throws IOException {
         writeStream(disconnectionPacket, client);
         clients.remove(client);
         client.destroy();
@@ -192,24 +182,12 @@ public class Server extends Networkable {
 
     /**
      * Opens the server on the specified port.
+     * @param port The port of the server, automatically picks a port if 0
      * @throws IOException the server socket throws an IOException while binding
      */
     public void open(int port) throws IOException {
         debugMessage("Opening server...");
         InetSocketAddress address = new InetSocketAddress(port);
-        serverSocket.bind(address);
-        connectThread = new Timer();
-        connectThread.schedule(new ConnectionThread(), 0, 1);
-        isAccepting = true;
-        debugMessage("Server opened, bound to "+address.getHostName()+":"+address.getPort());
-    }
-
-    /**
-     * Opens the server, automatically choosing the port.
-     * @throws IOException the server socket throws an IOException while binding
-     */
-    public void open() throws IOException {
-        InetSocketAddress address = new InetSocketAddress(0);
         serverSocket.bind(address);
         connectThread = new Timer();
         connectThread.schedule(new ConnectionThread(), 0, 1);

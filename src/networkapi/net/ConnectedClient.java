@@ -22,10 +22,6 @@ public class ConnectedClient extends Networkable {
     private final Server server;
     private boolean isConnected;
 
-    /**
-     * Constructs a new {@code ConnectedClient}.
-     * @param socket The socket that the client is connected through
-     */
     protected ConnectedClient(Socket socket, Server server) {
         this.socket = socket;
         try {
